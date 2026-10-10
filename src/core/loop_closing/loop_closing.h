@@ -31,7 +31,7 @@ class LoopClosing {
         double max_range_ = 30.0;    // 候选帧的最大距离
         double ndt_score_th_ = 1.0;  // ndt位姿分值
 
-        /// 图优化权重
+        // 图优化权重
         double motion_trans_noise_ = 0.1;               // 位移权重
         double motion_rot_noise_ = 3.0 * M_PI / 180.0;  // 旋转权重
 
@@ -49,10 +49,10 @@ class LoopClosing {
 
     void Init(const std::string yaml_path);
 
-    /// 向回环中添加一个关键帧
+    // 向回环中添加一个关键帧
     void AddKF(Keyframe::Ptr kf);
 
-    /// 如果检测到新地回环并发生了优化，则调用回调
+    // 如果检测到新地回环并发生了优化，则调用回调
     using LoopClosedCallback = std::function<void()>;
     void SetLoopClosedCB(LoopClosedCallback cb) { loop_cb_ = cb; }
 
@@ -61,13 +61,13 @@ class LoopClosing {
 
     void DetectLoopCandidates();
 
-    /// 计算回环候选位姿
+    // 计算回环候选位姿
     void ComputeLoopCandidates();
 
-    /// 计算单个回环候选
+    // 计算单个回环候选
     void ComputeForCandidate(LoopCandidate& c);
 
-    /// 优化位姿
+    // 优化位姿
     void PoseOptimization();
 
     Options options_;

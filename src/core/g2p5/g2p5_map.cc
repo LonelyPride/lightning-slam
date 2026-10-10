@@ -163,7 +163,7 @@ void G2P5Map::SetMissPoint(const float &point_x, const float &point_y, const flo
     int diff_y = point_y_index - yi_lidar;
     int diff_x = point_x_index - xi_lidar;
 
-    /// 整数的直线填充算法
+    // 整数的直线填充算法
     if (diff_y == 0 && diff_x == 0) {
         return;
     }
@@ -277,7 +277,7 @@ nav_msgs::msg::OccupancyGrid G2P5Map::ToROS() {
 
                         float occ = (visit_cnt > 3) ? (float)hit_cnt / (float)visit_cnt : -1;
 
-                        /// 注意这里有转置符号
+                        // 注意这里有转置符号
                         if (occ < 0) {
                             continue;
                         } else if (occ > options_.occupancy_ratio_) {
@@ -338,7 +338,7 @@ cv::Mat G2P5Map::ToCV() {
                         float occ = visit_cnt ? (hit_cnt == 0 ? 0 : (float)hit_cnt / (float)visit_cnt) : -1;
                         // assert(occ <= 1.0);
 
-                        /// 注意这里有转置符号
+                        // 注意这里有转置符号
                         if (occ < 0) {
                             continue;
                         } else if (occ > options_.occupancy_ratio_) {  // 0.49
@@ -364,7 +364,7 @@ cv::Mat G2P5Map::ToCV() {
         }
     }
 
-    /// cv的需要 flip y 才能转到俯视视角
+    // cv的需要 flip y 才能转到俯视视角
     cv::Mat image_flip;
     cv::flip(image, image_flip, 1);
     return image_flip;

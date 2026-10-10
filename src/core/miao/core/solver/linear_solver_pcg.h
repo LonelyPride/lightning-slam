@@ -38,11 +38,11 @@ class LinearSolverPCG : public LinearSolver<MatrixType> {
     bool abs_tolerance_ = true;
     int max_iter_ = 100;
 
-    /// A的对角线部分
+    // A的对角线部分
     MatrixPtrVector diag_;  // A阵的对角线部分
     MatrixVector J_;        // A阵对角线部分之逆
 
-    /// A的非对角线部分
+    // A的非对角线部分
     struct MatAndIdx {
         int idx_ = 0;  // 索引为行时，此处填列的id,索引为列时，此处填行
         MatrixType* mat_;

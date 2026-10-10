@@ -7,25 +7,25 @@
 
 namespace lightning::miao {
 
-/// 优化器使用的优化方法
+// 优化器使用的优化方法
 enum class AlgorithmType {
     GAUSS_NEWTON = 0,
     LEVENBERG_MARQUARDT,
     DOGLEG,
 };
 
-/// 线性方程的求解方法
+// 线性方程的求解方法
 enum class LinearSolverType {
     LINEAR_SOLVER_DENSE,         // eigen 稠密求解器
     LINEAR_SOLVER_SPARSE_EIGEN,  // eigen 稀疏求解器
     LINEAR_SOLVER_PCG,           // PCG 求解器，快但是糙一些
 
-    /// 后面的还未移植，目前不是特别想做
+    // 后面的还未移植，目前不是特别想做
     // LINEAR_SOLVER_CSPARSE,  // Csparse 求解器
     // LINEAR_SOLVER_CHOLMOD,  // Cholmod 求解器
 };
 
-/// 配置优化器
+// 配置优化器
 struct OptimizerConfig {
     OptimizerConfig() = default;
     explicit OptimizerConfig(AlgorithmType algo_type,
@@ -43,11 +43,11 @@ struct OptimizerConfig {
     // 稀疏问题可以有marg, 也可以没有marg
     bool is_dense_ = true;
 
-    /// 增量模式下配置
-    /// ==============================================================================
-    /// 增量模式可用于实时定位、实时pose graph等应用场景，但增量模式不适用于带Marg的顶点（因为Hessian index需要重排），
-    /// 所以增量适用于带各种约束下的pose graph
-    /// NOTE: 目前增加模式不支持SetFixed的节点，因为setFixed会跳过fixed nodes，导致Hessian index重排
+    // 增量模式下配置
+    // ==============================================================================
+    // 增量模式可用于实时定位、实时pose graph等应用场景，但增量模式不适用于带Marg的顶点（因为Hessian index需要重排），
+    // 所以增量适用于带各种约束下的pose graph
+    // NOTE: 目前增加模式不支持SetFixed的节点，因为setFixed会跳过fixed nodes，导致Hessian index重排
 
     // 打开增量模式
     bool incremental_mode_ = false;

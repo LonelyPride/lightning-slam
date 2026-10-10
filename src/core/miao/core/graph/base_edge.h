@@ -53,9 +53,9 @@ class BaseEdge : public Edge {
      */
     InformationType RobustInformation(const Vec3d& rho) const { return rho[1] * information_; }
 
-    Measurement measurement_;      ///< the measurement of the edge
-    InformationType information_;  ///< information matrix of the edge.
-    ErrorVector error_;            ///< error vector, stores the result after computeError() is called
+    Measurement measurement_;      //< the measurement of the edge
+    InformationType information_;  //< information matrix of the edge.
+    ErrorVector error_;            //< error vector, stores the result after computeError() is called
 };
 
 }  // namespace lightning::miao

@@ -28,7 +28,7 @@ class PointCloudPreprocess {
     PointCloudPreprocess() = default;
     ~PointCloudPreprocess() = default;
 
-    /// processors
+    // processors
     void Process(const sensor_msgs::msg::PointCloud2 ::SharedPtr &msg, PointCloudType::Ptr &pcl_out);
 
     void Process(const livox_ros_driver2::msg::CustomMsg::SharedPtr &cloud, PointCloudType::Ptr &pcl_out);

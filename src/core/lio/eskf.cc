@@ -126,8 +126,8 @@ void ESKF::Update(ESKF::ObsType obs, const double& R) {
     for (int i = -1; i < maximum_iter_; i++) {
         custom_obs_model_.valid_ = true;
 
-        /// 计算observation function，主要是residual_, h_x_, s_
-        /// x_ 在每次迭代中都是更新的，线性化点也会更新
+        // 计算observation function，主要是residual_, h_x_, s_
+        // x_ 在每次迭代中都是更新的，线性化点也会更新
         if (obs == ObsType::LIDAR || obs == ObsType::WHEEL_SPEED_AND_LIDAR) {
             lidar_obs_func_(x_, custom_obs_model_);
         } else if (obs == ObsType::WHEEL_SPEED) {
@@ -172,9 +172,9 @@ void ESKF::Update(ESKF::ObsType obs, const double& R) {
 
         P_ = P_propagated;
 
-        /// 更新P 和 dx
-        /// P = J*P*J^T
-        /// dx = J * dx
+        // 更新P 和 dx
+        // P = J*P*J^T
+        // dx = J * dx
         for (auto it : x_.SO3_states_) {
             int idx = it.idx_;
             Vec3d seg_SO3 = dx.block<3, 1>(idx, 0);
@@ -182,11 +182,11 @@ void ESKF::Update(ESKF::ObsType obs, const double& R) {
 
             dx_current.block<3, 1>(idx, 0) = res_temp_SO3 * dx.block<3, 1>(idx, 0);
 
-            /// P 上面有SO3的行 进行转换
+            // P 上面有SO3的行 进行转换
             for (int j = 0; j < state_dim_; j++) {
                 P_.block<3, 1>(idx, j) = res_temp_SO3 * (P_.block<3, 1>(idx, j));
             }
-            /// P 上面有SO3的列 进行转换
+            // P 上面有SO3的列 进行转换
             for (int j = 0; j < state_dim_; j++) {
                 P_.block<1, 3>(j, idx) = (P_.block<1, 3>(j, idx)) * res_temp_SO3.transpose();
             }
@@ -225,7 +225,7 @@ void ESKF::Update(ESKF::ObsType obs, const double& R) {
 
         CovType P_temp = (P_ / R).inverse();  // P阵上面已经更新
 
-        /// 现在问题是这个权重太大，导致整体过于依赖先验 ...
+        // 现在问题是这个权重太大，导致整体过于依赖先验 ...
         // P_temp.setIdentity();
 
         P_temp.block<pose_obs_dim_, pose_obs_dim_>(0, 0) += HTH_eff;
@@ -267,8 +267,8 @@ void ESKF::Update(ESKF::ObsType obs, const double& R) {
         // LOG(INFO) << "iter " << iterations_ << ", dx: " << dx_current.transpose();
         const double dx_translation = dx_current.head<3>().norm();
         const double dx_rotation_deg = dx_current.segment<3>(3).norm() * 180.0 / M_PI;
-        /// 个人修改（方案C）：非 LiDAR 观测（姿态/重力软观测）使用单独的步长上限，
-        ///   否则"世界系初始倾斜十几度"时整个更新会被下面这条保护直接丢弃（详见 eskf.hpp Options 注释）
+        // 个人修改（方案C）：非 LiDAR 观测（姿态/重力软观测）使用单独的步长上限，
+        //   否则"世界系初始倾斜十几度"时整个更新会被下面这条保护直接丢弃（详见 eskf.hpp Options 注释）
         const bool is_lidar_obs = (obs == ObsType::LIDAR || obs == ObsType::WHEEL_SPEED_AND_LIDAR);
         const double max_trans_step =
             is_lidar_obs ? options_.max_update_translation_step_ : options_.max_update_translation_step_nonlidar_;
@@ -320,8 +320,8 @@ void ESKF::Update(ESKF::ObsType obs, const double& R) {
         }
 
         if (converged_times > 0 || i == maximum_iter_ - 1) {
-            /// 结束条件：已经收敛
-            /// 更新P阵, using (45)
+            // 结束条件：已经收敛
+            // 更新P阵, using (45)
             L_ = P_;
             Mat3d res_temp_SO3;
             Vec3d seg_SO3;
@@ -351,10 +351,10 @@ void ESKF::Update(ESKF::ObsType obs, const double& R) {
             if (nullity > 0) {
                 // LOG_EVERY_N(INFO, 50) << "ESKF observation degeneracy rank " << (pose_obs_dim_ - nullity) << "/"
                 //                      << pose_obs_dim_;
-                /// 个人修改（方案C）：只有 LiDAR 观测才做"退化时给位姿协方差充气"。
-                ///   原因：姿态/重力观测（ACC_AS_GRAVITY）的 HTH 天然是【秩2】的（绕重力方向的自转不可观测），
-                ///   若同样按退化处理，每帧都会把整个位姿块放大 2%，10 Hz 下 P 会长期虚高
-                ///   （对角被 SymmetrizeAndFloorCovariance 顶到上限 100），反而让滤波器失去约束。
+                // 个人修改（方案C）：只有 LiDAR 观测才做"退化时给位姿协方差充气"。
+                //   原因：姿态/重力观测（ACC_AS_GRAVITY）的 HTH 天然是【秩2】的（绕重力方向的自转不可观测），
+                //   若同样按退化处理，每帧都会把整个位姿块放大 2%，10 Hz 下 P 会长期虚高
+                //   （对角被 SymmetrizeAndFloorCovariance 顶到上限 100），反而让滤波器失去约束。
                 if (obs == ObsType::LIDAR || obs == ObsType::WHEEL_SPEED_AND_LIDAR) {
                     P_.block<pose_obs_dim_, pose_obs_dim_>(0, 0) *= options_.degeneracy_cov_inflation_;
                 }

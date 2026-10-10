@@ -173,7 +173,7 @@ class EdgeObservationBAL : public miao::BaseBinaryEdge<2, Vec2d, VertexCameraBAL
         }
 
         {
-            /// jacobian calib
+            // jacobian calib
             Eigen::Matrix<double, 2, 3> J;
 
             J.col(0) = r * projPt;                            // d(calibPt) / d(f)
@@ -262,7 +262,7 @@ int main(int argc, char** argv) {
         edges.emplace_back(e);
     }
 
-    /// 罗德里格斯参数转四元数
+    // 罗德里格斯参数转四元数
     auto rodriguezToQuat = [](const Vec3d& rRot) {
         double angle = rRot.norm();
         if (angle < 1e-12) {

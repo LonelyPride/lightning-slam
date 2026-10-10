@@ -49,69 +49,69 @@ public:
     VarState();
     ~VarState();
 
-    /// \returns true iff a pangolin var with key name \param key exists in the index.
+    // \returns true iff a pangolin var with key name \param key exists in the index.
     bool Exists(const std::string& key) const;
 
-    /// Register a user defined variable in memory into the VarState index.
-    /// Note that the user memory must have a lifetime which exceeds all accesses through
-    /// pangolin::Vars. The parameter remains owned by the user who must take care of
-    /// appropriate deallocation.
-    ///
-    /// \tparam T The type of \param variable to register
-    /// \param variable The variable to make available in the VarState index.
-    /// \param meta Meta information about the variable that will allow tools to introspect
-    ///             and modify it. In particular, \param meta.name is the user accessible name
-    ///             and is also used as input to lookup any Var in the index.
+    // Register a user defined variable in memory into the VarState index.
+    // Note that the user memory must have a lifetime which exceeds all accesses through
+    // pangolin::Vars. The parameter remains owned by the user who must take care of
+    // appropriate deallocation.
+    //
+    // \tparam T The type of \param variable to register
+    // \param variable The variable to make available in the VarState index.
+    // \param meta Meta information about the variable that will allow tools to introspect
+    //             and modify it. In particular, \param meta.name is the user accessible name
+    //             and is also used as input to lookup any Var in the index.
     template<typename T>
     std::shared_ptr<VarValueGeneric> AttachVar( T& variable, const VarMeta& meta );
 
-    /// Get a reference to an existing Var in the index, or create one if it doesn't exist.
-    /// The variable name to be used is inside of \param meta.name. Lifetime of Created
-    /// variables is managed through shared_ptr reference counting.
-    ///
-    /// \tparam T The underlying type of the Var to create
-    /// \param value The initial value for the Var if it doesn't already exist and gets created
-    /// \param meta Meta information about the variable that will allow tools to introspect
-    ///             and modify it. In particular, \param meta.name is the user accessible name
-    ///             and is also used as input to lookup any Var in the index.
+    // Get a reference to an existing Var in the index, or create one if it doesn't exist.
+    // The variable name to be used is inside of \param meta.name. Lifetime of Created
+    // variables is managed through shared_ptr reference counting.
+    //
+    // \tparam T The underlying type of the Var to create
+    // \param value The initial value for the Var if it doesn't already exist and gets created
+    // \param meta Meta information about the variable that will allow tools to introspect
+    //             and modify it. In particular, \param meta.name is the user accessible name
+    //             and is also used as input to lookup any Var in the index.
     template<typename T>
     std::shared_ptr<VarValueGeneric> GetOrCreateVar( const T& value, const VarMeta& meta );
 
-    /// \return A reference to the corresponding var with name \param full_name, or nullptr
-    ///         if no such Var exists
+    // \return A reference to the corresponding var with name \param full_name, or nullptr
+    //         if no such Var exists
     std::shared_ptr<VarValueGeneric> GetByName(const std::string& full_name);
 
-    /// \return A reference to the corresponding var with underlying memory \param value, or nullptr
-    ///         if no such Var exists
+    // \return A reference to the corresponding var with underlying memory \param value, or nullptr
+    //         if no such Var exists
     template<typename T>
     std::shared_ptr<VarValueGeneric> GetByReference(const T& value);
 
-    /// Callback Event structure for notification of Var Additions and Deletions
+    // Callback Event structure for notification of Var Additions and Deletions
     struct Event {
-        /// Function signature for user callbacks
+        // Function signature for user callbacks
         using Function = std::function<void(const Event&)>;
 
-        /// Type of Var Event
+        // Type of Var Event
         enum class Action {
             Added,    // A Var was added to the VarState index
             Removed   // A Var was removed from the VarState index
         };
 
-        /// The kind of event
+        // The kind of event
         Action action;
 
-        /// The Var in question
-        /// Note: removals occur immediately following the callback
+        // The Var in question
+        // Note: removals occur immediately following the callback
         std::shared_ptr<VarValueGeneric> var;
     };
 
-    /// Register to be informed of Var additions and removals
-    /// \param callback_function User callback to use for notifications
-    /// \param include_historic Request to receive addition callbacks for current Vars
-    /// \returns A \class Connection object for handling \param callback_function lifetime
+    // Register to be informed of Var additions and removals
+    // \param callback_function User callback to use for notifications
+    // \param include_historic Request to receive addition callbacks for current Vars
+    // \returns A \class Connection object for handling \param callback_function lifetime
     sigslot::connection RegisterForVarEvents( Event::Function callback_function, bool include_historic);
 
-    /// Type of Var settings file
+    // Type of Var settings file
     enum class FileKind
     {
         detected, // detect based on filename / contents
@@ -119,19 +119,19 @@ public:
         config    // use config format
     };
 
-    /// Clear the VarState index of pangolin Vars.
-    /// Any remaining user instances of pangolin::Vars will remain valid but the
-    /// underlying data will be deallocated appropriately when no longer referenced
+    // Clear the VarState index of pangolin Vars.
+    // Any remaining user instances of pangolin::Vars will remain valid but the
+    // underlying data will be deallocated appropriately when no longer referenced
     void Clear();
 
-    /// Removes a Var with the given name from the VarState index if it exists
-    /// \returns true iff a var was found to remove
+    // Removes a Var with the given name from the VarState index if it exists
+    // \returns true iff a var was found to remove
     bool Remove(const std::string& name);
 
-    /// Load Var state from file
+    // Load Var state from file
     void LoadFromFile(const std::string& filename, FileKind kind = FileKind::detected);
 
-    /// Save current Var state to file
+    // Save current Var state to file
     void SaveToFile(const std::string& filename, FileKind kind = FileKind::json);
 
 private:
@@ -167,9 +167,9 @@ private:
 };
 
 
-/////////////////////////////////////////////////////////////////////////////
-/// Implementation
-/////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////
+// Implementation
+////////////////////////////////////////////////////
 
 template<typename T>
 std::shared_ptr<VarValueGeneric> VarState::AttachVar(

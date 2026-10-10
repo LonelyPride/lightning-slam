@@ -84,7 +84,7 @@ bool LidarLoc::Init(const std::string& config_path) {
     lidar_loc::grid_search_angle_step = yaml.GetValue<double>("lidar_loc", "grid_search_angle_step");
     lidar_loc::grid_search_angle_range = yaml.GetValue<double>("lidar_loc", "grid_search_angle_range");
 
-    /// 个人修改（2026-10-01）：手动初始位姿配套参数（可选键，缺键时用代码默认值 → 旧 yaml 也能跑）
+    // 个人修改（2026-10-01）：手动初始位姿配套参数（可选键，缺键时用代码默认值 → 旧 yaml 也能跑）
     if (yaml.HasValue("lidar_loc", "manual_init_rough_search")) {
         options_.manual_init_rough_search_ = yaml.GetValue<bool>("lidar_loc", "manual_init_rough_search");
     }
@@ -98,10 +98,10 @@ bool LidarLoc::Init(const std::string& config_path) {
         options_.manual_init_refine_iter_ = yaml.GetValue<int>("lidar_loc", "manual_init_refine_iter");
     }
 
-    /// 个人修改（2026-10-02，方案C）：高度约束 / 地图健康度自检（可选键，缺键时用"恢复原注释代码语义"的默认值）
-    ///   说明：with_height 以前同时被 loop_closing（后端高度先验）和定位端读取，含义耦合；
-    ///   这里给定位端一个独立开关 lidar_loc.height_constraint_enable，
-    ///   未配置时回退到 loop_closing.with_height（= 原注释代码的生效条件），保持向后兼容。
+    // 个人修改（2026-10-02，方案C）：高度约束 / 地图健康度自检（可选键，缺键时用"恢复原注释代码语义"的默认值）
+    //   说明：with_height 以前同时被 loop_closing（后端高度先验）和定位端读取，含义耦合；
+    //   这里给定位端一个独立开关 lidar_loc.height_constraint_enable，
+    //   未配置时回退到 loop_closing.with_height（= 原注释代码的生效条件），保持向后兼容。
     if (yaml.HasValue("lidar_loc", "height_constraint_enable")) {
         options_.height_constraint_enable_ = yaml.GetValue<bool>("lidar_loc", "height_constraint_enable");
     } else {
@@ -160,11 +160,11 @@ bool LidarLoc::Init(const std::string& config_path) {
     auto fps = map_->GetAllFP();
     if (!fps.empty()) {
         map_->LoadOnPose(fps.front().pose_);
-        /// 更新一次地图，保证有初始数据
+        // 更新一次地图，保证有初始数据
         UpdateGlobalMap();
     }
 
-    /// load recover pose if exist
+    // load recover pose if exist
     if (PathExists(options_.recover_pose_path_)) {
         std::ifstream fin(options_.recover_pose_path_);
         double data[7] = {0, 0, 0, 0, 0, 0, 1};
@@ -181,7 +181,7 @@ bool LidarLoc::Init(const std::string& config_path) {
 
     update_map_thread_ = std::thread([this]() { LidarLoc::UpdateMapThread(); });
 
-    /// 个人修改（2026-10-02，方案C）：启动时自检地图地面是否水平（地图一旦倾斜，定位 z 必然漂移）
+    // 个人修改（2026-10-02，方案C）：启动时自检地图地面是否水平（地图一旦倾斜，定位 z 必然漂移）
     if (options_.map_level_check_enable_) {
         CheckMapLevel();
     }
@@ -237,8 +237,22 @@ bool LidarLoc::ProcessDR(const NavState& state) {
     UL lock(dr_pose_mutex_);
     if (!dr_pose_queue_.empty()) {
         const double last_stamp = dr_pose_queue_.back().timestamp_;
-        if (state.timestamp_ < last_stamp) {
-            return false;
+        const double delta_timestamp = state.timestamp_ - last_stamp;
+
+        if (delta_timestamp < 0) {
+            // 个人修改（2026-10-09，DR 时间戳回退修复）：与 PGO::ProcessDR 保持同一套处理策略。
+            //   dr_pose_queue_ 会被 PoseInterp 使用（见本文件按 DR 递推的调用点），必须严格单调，
+            //   所以回退帧不入队；只有"大幅回退"（时钟复位）时才清空队列重新接入，
+            //   避免"丢弃新数据"变成"DR 队列永久停更"。
+            if (-delta_timestamp > pgo::PGO_DR_CLOCK_RESET_THD) {
+                LOG(ERROR) << "LidarLoc: DR时间戳大幅回退 " << delta_timestamp << "s (上一帧 " << last_stamp
+                           << ")，判定为IMU/时钟复位，清空DR队列后重新接入";
+                dr_pose_queue_.clear();
+            } else {
+                LOG_EVERY_N(WARNING, 50) << "LidarLoc: DR时间戳回退 " << delta_timestamp << "，丢弃该帧(累计 "
+                                         << google::COUNTER << " 次)";
+                return false;
+            }
         }
     }
 
@@ -251,7 +265,7 @@ bool LidarLoc::ProcessDR(const NavState& state) {
 }
 
 bool LidarLoc::ProcessLO(const NavState& state) {
-    /// 理论上相对定位是按时间顺序到达的
+    // 理论上相对定位是按时间顺序到达的
     UL lock(lo_pose_mutex_);
     if (!lo_pose_queue_.empty()) {
         const double last_stamp = lo_pose_queue_.back().timestamp_;
@@ -310,7 +324,7 @@ bool LidarLoc::YawSearch(SE3& pose, double& confidence, CloudPtr input, CloudPtr
     LOG(INFO) << "init yaw: " << init_yaw << ", p: " << RPYXYZ.pitch << ", ro: " << RPYXYZ.roll << ", search from "
               << searched_yaw.front() << " to " << searched_yaw.back();
 
-    /// 粗分辨率
+    // 粗分辨率
     std::for_each(index.begin(), index.end(), [&](int i) {
         double fitness_score = 0;
         RPYXYZ.yaw = searched_yaw[i];
@@ -327,7 +341,7 @@ bool LidarLoc::YawSearch(SE3& pose, double& confidence, CloudPtr input, CloudPtr
     confidence = scores.at(best_score_idx);
     pose = pose_opti.at(best_score_idx);
 
-    /// 高分辨率
+    // 高分辨率
     if (confidence > options_.min_init_confidence_) {
         Localize(pose, confidence, input, output, false);
     }
@@ -356,17 +370,17 @@ bool LidarLoc::InitWithFP(CloudPtr input, const SE3& fp_pose, bool wide_seed_sea
     CloudPtr output_cloud(new PointCloudType);
     // loc_inited_ = YawSearch(pose_esti, fitness_score, input, output_cloud);
 
-    /// 第一轮：直接以给定种子做细分辨率配准。
-    ///   点得准时（车静止或点得准）这就是最优路径，与修改前行为一致。
+    // 第一轮：直接以给定种子做细分辨率配准。
+    //   点得准时（车静止或点得准）这就是最优路径，与修改前行为一致。
     loc_inited_ = Localize(pose_esti, fitness_score, input, output_cloud);
 
-    /// 个人修改（2026-10-01，手动初始位姿配套）：
-    ///   手动点选（RViz "2D Pose Estimate" / 外部话题）的位姿天然带"点击延迟"误差
-    ///   （车在动时约 0.5~2 m；用户的"现在"比正在配准的那一帧新）与朝向误差，
-    ///   细分辨率 NDT 只有 4 次迭代、收敛半径小 ⇒ 第一轮常被 min_init_confidence_ 拒掉
-    ///   （实测：种子偏 ~1.3 m 时分值 1.4~1.78 < 1.8）。
-    ///   此时用【粗分辨率(5m) NDT + 小范围 yaw 搜索】再找一次种子，让代价函数在自己更宽的
-    ///   收敛域内先把位置/朝向拉回来，再做细分辨率收敛；最终仍由同一门槛把关，不会降低安全线。
+    // 个人修改（2026-10-01，手动初始位姿配套）：
+    //   手动点选（RViz "2D Pose Estimate" / 外部话题）的位姿天然带"点击延迟"误差
+    //   （车在动时约 0.5~2 m；用户的"现在"比正在配准的那一帧新）与朝向误差，
+    //   细分辨率 NDT 只有 4 次迭代、收敛半径小 ⇒ 第一轮常被 min_init_confidence_ 拒掉
+    //   （实测：种子偏 ~1.3 m 时分值 1.4~1.78 < 1.8）。
+    //   此时用【粗分辨率(5m) NDT + 小范围 yaw 搜索】再找一次种子，让代价函数在自己更宽的
+    //   收敛域内先把位置/朝向拉回来，再做细分辨率收敛；最终仍由同一门槛把关，不会降低安全线。
     if (!loc_inited_ && wide_seed_search && options_.manual_init_rough_search_) {
         SE3 coarse_pose = fp_pose;
         double coarse_score = 0;
@@ -388,17 +402,17 @@ bool LidarLoc::InitWithFP(CloudPtr input, const SE3& fp_pose, bool wide_seed_sea
         }
     }
 
-    /// 个人修改（2026-10-01，手动初始位姿配套）：接受后再迭代精修。
-    ///   NDT 单次配准只有 4 次迭代，种子偏 1 m 时往往只收敛到"真值附近的局部最优"：
-    ///   实测接受时 1.875，而同路段正常跟踪分值是 2.08 —— 该偏差会被后续跟踪继承
-    ///   （预测初值总在偏差点附近 ⇒ 每帧都收敛回偏差点，分值系统性偏低）。
-    ///   这里以刚得到的结果为初值再迭代若干次（只在分值变好时采用，绝不劣化），
-    ///   让手动初值真正落到与跟踪一致的最优解上。仅手动种子路径启用。
+    // 个人修改（2026-10-01，手动初始位姿配套）：接受后再迭代精修。
+    //   NDT 单次配准只有 4 次迭代，种子偏 1 m 时往往只收敛到"真值附近的局部最优"：
+    //   实测接受时 1.875，而同路段正常跟踪分值是 2.08 —— 该偏差会被后续跟踪继承
+    //   （预测初值总在偏差点附近 ⇒ 每帧都收敛回偏差点，分值系统性偏低）。
+    //   这里以刚得到的结果为初值再迭代若干次（只在分值变好时采用，绝不劣化），
+    //   让手动初值真正落到与跟踪一致的最优解上。仅手动种子路径启用。
     if (loc_inited_ && wide_seed_search && options_.manual_init_refine_iter_ > 0) {
         for (int i = 0; i < options_.manual_init_refine_iter_; ++i) {
             SE3 refined_pose = pose_esti;
             double refined_score = 0;
-            /// 注意：此时 loc_inited_ 已被置 true，Localize 不再做门槛判定，纯粹做一次精配准
+            // 注意：此时 loc_inited_ 已被置 true，Localize 不再做门槛判定，纯粹做一次精配准
             Localize(refined_pose, refined_score, input, output_cloud);
             if (refined_score > fitness_score) {
                 LOG(INFO) << "manual init: refine iter " << (i + 1) << ": score " << fitness_score << " -> "
@@ -451,12 +465,12 @@ bool LidarLoc::InitWithFP(CloudPtr input, const SE3& fp_pose, bool wide_seed_sea
 }
 
 bool LidarLoc::SearchSeedRough(CloudPtr input, const SE3& seed, SE3& best_pose, double& best_score, CloudPtr out) {
-    /// 个人修改（2026-10-01，手动初始位姿配套）：粗分辨率 NDT 上的"种子搜索"。
-    ///   与 YawSearch() 的区别：① 只搜种子附近 ±manual_init_yaw_search_deg_（不是 ±180°），
-    ///   ② 同时也把【原种子】作为一个候选（用户点得准时它最优），③ 只用于手动初始位姿。
-    ///   粗分辨率(5m)的代价函数更平滑、收敛半径更大，因此能吸收手动点选带来的米级位置偏差
-    ///   与较大朝向偏差；返回值只是"找到更好的种子"，最终是否初始化成功仍由细分辨率 NDT +
-    ///   min_init_confidence_ 判定（见 InitWithFP）。
+    // 个人修改（2026-10-01，手动初始位姿配套）：粗分辨率 NDT 上的"种子搜索"。
+    //   与 YawSearch() 的区别：① 只搜种子附近 ±manual_init_yaw_search_deg_（不是 ±180°），
+    //   ② 同时也把【原种子】作为一个候选（用户点得准时它最优），③ 只用于手动初始位姿。
+    //   粗分辨率(5m)的代价函数更平滑、收敛半径更大，因此能吸收手动点选带来的米级位置偏差
+    //   与较大朝向偏差；返回值只是"找到更好的种子"，最终是否初始化成功仍由细分辨率 NDT +
+    //   min_init_confidence_ 判定（见 InitWithFP）。
     if (pcl_ndt_rough_ == nullptr) {
         LOG(WARNING) << "manual init: rough resolution ndt is not ready, keep the given seed";
         return false;
@@ -469,7 +483,7 @@ bool LidarLoc::SearchSeedRough(CloudPtr input, const SE3& seed, SE3& best_pose, 
     best_score = 0;
     best_pose = seed;
 
-    /// 候选 0：原种子
+    // 候选 0：原种子
     {
         SE3 cand = seed;
         double score = 0;
@@ -480,7 +494,7 @@ bool LidarLoc::SearchSeedRough(CloudPtr input, const SE3& seed, SE3& best_pose, 
         }
     }
 
-    /// 候选 1..step：种子 yaw ± radius 内的均匀采样
+    // 候选 1..step：种子 yaw ± radius 内的均匀采样
     for (int i = 0; i < step; ++i) {
         const double offset = (step == 1) ? 0.0 : (-radius + 2.0 * radius * static_cast<double>(i) / (step - 1));
         auto rpy = seed_rpy;
@@ -543,7 +557,7 @@ void LidarLoc::ApplyHeightConstraint(SE3& pose, const char* tag) {
     t.z() = z + options_.height_constraint_gain_ * applied;
     pose.translation() = t;
 
-    /// 偏差较大时打日志，便于观察约束是否在起作用
+    // 偏差较大时打日志，便于观察约束是否在起作用
     if (std::fabs(err) > 0.05) {
         LOG_EVERY_N(INFO, 20) << "[方案C][height constraint] " << tag << ": z " << z << " -> " << pose.translation().z()
                               << " (map_height = " << map_height_ << ", err = " << err
@@ -579,7 +593,7 @@ void LidarLoc::CheckMapLevel() {
         return;
     }
 
-    /// 参考点：优先 start 功能点（它就是定位初始化用的位姿），否则用第一个功能点
+    // 参考点：优先 start 功能点（它就是定位初始化用的位姿），否则用第一个功能点
     auto fps = map_->GetAllFP();
     if (fps.empty()) {
         LOG(WARNING) << "[方案C][map level] 地图没有功能点(index.txt)，跳过地面健康度自检";
@@ -599,7 +613,7 @@ void LidarLoc::CheckMapLevel() {
     const double radius = std::max(1.0, options_.map_level_radius_);
     const double r2 = radius * radius;
 
-    /// 1) 半径内点、按 z 分层统计（找到"地面层"）
+    // 1) 半径内点、按 z 分层统计（找到"地面层"）
     constexpr double kBinSize = 0.1;
     const double z_low = ref.z() - 3.0;
     const double z_high = ref.z() - 0.2;
@@ -636,7 +650,7 @@ void LidarLoc::CheckMapLevel() {
 
     const double z_band = z_low + (best_bin + 0.5) * kBinSize;
 
-    /// 2) 地面层 ±0.15 m 内做平面拟合
+    // 2) 地面层 ±0.15 m 内做平面拟合
     PointVector ground_pts;
     ground_pts.reserve(best_cnt);
     for (const auto& pt : map_cloud->points) {
@@ -809,7 +823,7 @@ void LidarLoc::Align(const CloudPtr& input) {
 
     LOG(INFO) << "current time: " << std::fixed << std::setprecision(12) << current_timestamp_;
 
-    /// 设置当前帧对应的rel_pose
+    // 设置当前帧对应的rel_pose
     if (!AssignLOPose(current_time)) {
         LOG(WARNING) << "assign LO pose failed";
     }
@@ -818,7 +832,7 @@ void LidarLoc::Align(const CloudPtr& input) {
         LOG(WARNING) << "assign DR pose failed";
     }
 
-    /// 1. 车辆静止处理
+    // 1. 车辆静止处理
     if (parking_ && loc_inited_) {
         LOG(INFO) << "车辆静止，不做匹配";
 
@@ -837,23 +851,23 @@ void LidarLoc::Align(const CloudPtr& input) {
         return;
     }
 
-    /// 2. 初始化处理
+    // 2. 初始化处理
     if (!loc_inited_) {
         UL lock_init(initial_pose_mutex_);
         LOG(INFO) << "initing lidarloc";
         SetInitRltState();
 
         if (initial_pose_set_) {
-            /// 尝试在给定点初始化
-            /// 个人修改（2026-10-01，手动初始位姿配套）：
-            ///   ① 先 map_->LoadOnPose(initial_pose_)：下面的功能点循环每试一个候选都会加载对应地图块，
-            ///      而手动分支原来【漏了这一步】⇒ NDT 目标仍是"上一处加载的地图块"（例如功能点 start 附近），
-            ///      远端手动点选时目标点云覆盖不足、分值被明显压低（实测同路段 2.06 → 1.73），
-            ///      既可能被门槛误拒，即使成功也会让后续跟踪分值偏低。这里补齐与功能点循环一致的动作。
-            ///      （地图块真正的 NDT 目标更新由地图线程完成，若本帧尚未更新，下一帧会带着
-            ///       已更新的目标重试 —— initial_pose_set_ 在成功前一直为 true。）
-            ///   ② 传 wide_seed_search = true：手动点选带点击延迟/朝向误差，先用粗分辨率 NDT
-            ///      小范围搜索一遍再精配准（普通功能点初始化仍走原路径）。
+            // 尝试在给定点初始化
+            // 个人修改（2026-10-01，手动初始位姿配套）：
+            //   ① 先 map_->LoadOnPose(initial_pose_)：下面的功能点循环每试一个候选都会加载对应地图块，
+            //      而手动分支原来【漏了这一步】⇒ NDT 目标仍是"上一处加载的地图块"（例如功能点 start 附近），
+            //      远端手动点选时目标点云覆盖不足、分值被明显压低（实测同路段 2.06 → 1.73），
+            //      既可能被门槛误拒，即使成功也会让后续跟踪分值偏低。这里补齐与功能点循环一致的动作。
+            //      （地图块真正的 NDT 目标更新由地图线程完成，若本帧尚未更新，下一帧会带着
+            //       已更新的目标重试 —— initial_pose_set_ 在成功前一直为 true。）
+            //   ② 传 wide_seed_search = true：手动点选带点击延迟/朝向误差，先用粗分辨率 NDT
+            //      小范围搜索一遍再精配准（普通功能点初始化仍走原路径）。
             map_->LoadOnPose(initial_pose_);
             if (InitWithFP(input, initial_pose_, true)) {
                 LOG(INFO) << "init with external pose: " << initial_pose_.translation().transpose();
@@ -863,8 +877,8 @@ void LidarLoc::Align(const CloudPtr& input) {
         }
 
         if (options_.init_with_fp_) {
-            /// 从功能点初始化
-            /// 如果之前尝试过，那么需要间隔一段时间再进行搜索
+            // 从功能点初始化
+            // 如果之前尝试过，那么需要间隔一段时间再进行搜索
             if (!fp_init_fail_pose_vec_.empty() && current_dr_pose_set_) {
                 SE3 last_tried_pose = fp_init_fail_pose_vec_.back();
                 bool should_try =
@@ -905,12 +919,12 @@ void LidarLoc::Align(const CloudPtr& input) {
             }
         }
 
-        /// 初始化未成功时，不往下走流程
+        // 初始化未成功时，不往下走流程
         return;
     }
 
-    /// 4. 设置当前帧对应的 pose guess
-    /// NOTE: LO设置预测的位置和LidarLoc自身递推设置预测的方法并不完全一致，自身外推容易受噪声影响
+    // 4. 设置当前帧对应的 pose guess
+    // NOTE: LO设置预测的位置和LidarLoc自身递推设置预测的方法并不完全一致，自身外推容易受噪声影响
 
     SE3 guess_from_lo = last_abs_pose_;
     if (last_lo_pose_set_ && current_lo_pose_set_) {
@@ -965,8 +979,8 @@ void LidarLoc::Align(const CloudPtr& input) {
     //     }
     // }
 
-    /// 5. 载入地图, 与地图匹配定位
-    /// 尝试各种初始估计
+    // 5. 载入地图, 与地图匹配定位
+    // 尝试各种初始估计
     CloudPtr output_cloud(new PointCloudType);
     double fitness_score = 0;
     SE3 current_pose_esti = guess_from_lo;
@@ -974,7 +988,7 @@ void LidarLoc::Align(const CloudPtr& input) {
     loc_success_lo = loc_success_self = loc_success_dr = false;
     bool loc_success = false;
 
-    /// 注意load on pose存在滞后，优先load on DR
+    // 注意load on pose存在滞后，优先load on DR
     map_->LoadOnPose(guess_from_lo);
 
     loc_success_lo = Localize(current_pose_esti, fitness_score, input, output_cloud);  // LO 那个肯定会算
@@ -987,7 +1001,7 @@ void LidarLoc::Align(const CloudPtr& input) {
 
     // 先尝试外部预测，最后用自身
     // if (try_dr) {
-    //     /// 尝试DR外推的pose
+    //     // 尝试DR外推的pose
     //     res_of_dr = guess_from_dr;
     //     loc_success_dr = Localize(res_of_dr, score_dr, input, output_cloud);
     //     if (score_dr > (fitness_score - 0.1)) {
@@ -1005,7 +1019,7 @@ void LidarLoc::Align(const CloudPtr& input) {
 
     // double score_self = 0;
     // if (try_self) {
-    //     /// 尝试自身外推的pose
+    //     // 尝试自身外推的pose
     //     LOG(INFO) << "localize with extrap";
 
     //     res_of_self = guess_from_self;
@@ -1020,7 +1034,7 @@ void LidarLoc::Align(const CloudPtr& input) {
     //     }
     // }
 
-    /// NOTE 如果LO, DR出发点和收敛点不同，但分值相近，说明场景可能处在退化状态，此时使用DR预测的Pose
+    // NOTE 如果LO, DR出发点和收敛点不同，但分值相近，说明场景可能处在退化状态，此时使用DR预测的Pose
     // if (try_dr && (res_of_lo.translation() - res_of_dr.translation()).head<2>().norm() > 0.2 &&
     //     fabs(score_lo - score_dr) < 0.2 && score_lo < 1.2) {
     //     LOG(WARNING) << "判定激光定位进入退化状态，现在会使用DR递推pose而不是激光定位位置";
@@ -1029,12 +1043,12 @@ void LidarLoc::Align(const CloudPtr& input) {
 
     if (options_.force_2d_) {
         PoseRPYD RPYXYZ = math::SE3ToRollPitchYaw(current_pose_esti);
-        /// 个人修改（2026-10-02，方案C）：force_2d 的语义修正
-        ///   原实现连 z 一起归零（RPYXYZ.z = 0），那是"2D 导航、地图原点在地面"的布局假设；
-        ///   本平台地图原点在 IMU/雷达处、地面在 z≈-0.68 m，且路线可能有坡度 ⇒ z 归零会让定位整体偏低。
-        ///   现在默认只约束 roll/pitch（"车是水平的"这条物理事实），z 交给 height_constraint 处理；
-        ///   需要老行为时把 lidar_loc.force_2d_zero_z 设为 true。
-        ///   另外记录一下"匹配结果相对水平面偏了多少"，便于发现地图倾斜/匹配异常。
+        // 个人修改（2026-10-02，方案C）：force_2d 的语义修正
+        //   原实现连 z 一起归零（RPYXYZ.z = 0），那是"2D 导航、地图原点在地面"的布局假设；
+        //   本平台地图原点在 IMU/雷达处、地面在 z≈-0.68 m，且路线可能有坡度 ⇒ z 归零会让定位整体偏低。
+        //   现在默认只约束 roll/pitch（"车是水平的"这条物理事实），z 交给 height_constraint 处理；
+        //   需要老行为时把 lidar_loc.force_2d_zero_z 设为 true。
+        //   另外记录一下"匹配结果相对水平面偏了多少"，便于发现地图倾斜/匹配异常。
         const double raw_roll_deg = RPYXYZ.roll * 180.0 / M_PI;
         const double raw_pitch_deg = RPYXYZ.pitch * 180.0 / M_PI;
         if (std::fabs(raw_roll_deg) > 5.0 || std::fabs(raw_pitch_deg) > 5.0) {
@@ -1052,8 +1066,8 @@ void LidarLoc::Align(const CloudPtr& input) {
         current_pose_esti = math::XYZRPYToSE3(RPYXYZ);
     }
 
-    /// 个人修改（2026-10-02，方案C）：恢复并规范化被注释掉的 with_height_ 高度约束
-    ///   （见 ApplyHeightConstraint 与 LidarLoc::Options 的说明：tol=0 即原注释代码的"锁 z"行为）
+    // 个人修改（2026-10-02，方案C）：恢复并规范化被注释掉的 with_height_ 高度约束
+    //   （见 ApplyHeightConstraint 与 LidarLoc::Options 的说明：tol=0 即原注释代码的"锁 z"行为）
     ApplyHeightConstraint(current_pose_esti, "match");
 
     current_abs_pose_ = current_pose_esti;
@@ -1075,11 +1089,11 @@ void LidarLoc::Align(const CloudPtr& input) {
         current_score_ = fitness_score;
         LOG(WARNING) << "localization failed! score: " << current_score_;
 
-        ///  若连续3帧匹配失败就设一个大分值
+        //  若连续3帧匹配失败就设一个大分值
         ++match_fail_count_;
     }
 
-    /// 确定激光定位是否满足平滑性要求
+    // 确定激光定位是否满足平滑性要求
     Vec3d dpred = current_abs_pose_.translation() - guess_from_self.translation();
     if (fabs(dpred[0]) < 0.5 && fabs(dpred[1]) < 0.5 &&
         (current_abs_pose_.so3().inverse() * guess_from_self.so3()).log().norm() < 2.0 * M_PI / 180.0) {
@@ -1095,7 +1109,7 @@ void LidarLoc::Align(const CloudPtr& input) {
     //     ui_->UpdatePredictPose(guess_from_lo);
     // }
 
-    /// 7. 输出结果
+    // 7. 输出结果
     {
         UL lock(result_mutex_);
         localization_result_.timestamp_ = current_timestamp_;
@@ -1119,8 +1133,8 @@ void LidarLoc::Align(const CloudPtr& input) {
 
     UpdateState(input);
 
-    /// 8. 更新动态图层
-    /// 条件：1. 定位成功 2. 与上次更新间隔一定距离 3. RTK与激光定位横纵向误差都小于0.3，或者匹配分值大于1.0
+    // 8. 更新动态图层
+    // 条件：1. 定位成功 2. 与上次更新间隔一定距离 3. RTK与激光定位横纵向误差都小于0.3，或者匹配分值大于1.0
     bool score_cond = current_score_ > options_.update_lidar_loc_score_;
 
     if (options_.update_dynamic_cloud_ && loc_success &&
@@ -1166,7 +1180,7 @@ void LidarLoc::Align(const CloudPtr& input) {
         ave_scores_.pop_front();
     }
 
-    /// 9. save for recover pose
+    // 9. save for recover pose
     recover_pose_out_.open(options_.recover_pose_path_);
     if (recover_pose_out_) {
         Vec3d t = current_pose_esti.translation();
@@ -1345,11 +1359,11 @@ bool LidarLoc::AssignLOPose(double timestamp) {
         current_vel_b_ = best_match.GetRot().inverse() * best_match.GetVel();
         current_vel_ = best_match.GetVel();
 
-        /// 个人修改（2026-10-02，方案C）：恢复被注释掉的 with_height_ 处理。
-        ///   这里 current_lo_pose_ 是"LO 在该时刻的世界位姿"，它只被用作【相对量】
-        ///   （delta = last_lo_pose_⁻¹ * current_lo_pose_）来外推 guess：
-        ///   把它的 z 归到 map_height_ 上，等价于【让 LO 不再向 guess 里注入 z 变化】，
-        ///   即只让 LO 提供平面内的 x/y/yaw 递推 ⇒ 倾斜的 LIO 不会再带着 guess 一起往下掉。
+        // 个人修改（2026-10-02，方案C）：恢复被注释掉的 with_height_ 处理。
+        //   这里 current_lo_pose_ 是"LO 在该时刻的世界位姿"，它只被用作【相对量】
+        //   （delta = last_lo_pose_⁻¹ * current_lo_pose_）来外推 guess：
+        //   把它的 z 归到 map_height_ 上，等价于【让 LO 不再向 guess 里注入 z 变化】，
+        //   即只让 LO 提供平面内的 x/y/yaw 递推 ⇒ 倾斜的 LIO 不会再带着 guess 一起往下掉。
         if (options_.height_constraint_enable_ && options_.height_constraint_gain_ > 1e-9 && map_height_valid_) {
             current_lo_pose_.translation()[2] = map_height_;
         }
@@ -1374,8 +1388,8 @@ bool LidarLoc::AssignDRPose(double timestamp) {
         current_dr_pose_ = interp_pose;
         current_dr_pose_set_ = true;
 
-        /// 个人修改（2026-10-02，方案C）：同 AssignLOPose —— DR 也只提供平面内递推，
-        ///   不把 z 变化注入 guess（原注释代码的语义，已用 map_height_valid_ 做有效性保护）
+        // 个人修改（2026-10-02，方案C）：同 AssignLOPose —— DR 也只提供平面内递推，
+        //   不把 z 变化注入 guess（原注释代码的语义，已用 map_height_valid_ 做有效性保护）
         if (options_.height_constraint_enable_ && options_.height_constraint_gain_ > 1e-9 && map_height_valid_) {
             current_dr_pose_.translation()[2] = map_height_;
         }
@@ -1394,7 +1408,7 @@ void LidarLoc::Finish() {
         update_map_quit_ = true;
         update_map_thread_.join();
 
-        /// 永久保存时，再存储地图
+        // 永久保存时，再存储地图
         if (options_.map_option_.policy_ == TiledMap::DynamicCloudPolicy::PERSISTENT &&
             options_.map_option_.save_dyn_when_quit_ && !has_set_pose_) {
             map_->SaveToBin(true);

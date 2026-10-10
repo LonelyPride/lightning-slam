@@ -1,5 +1,5 @@
-/// @file
-/// FormatString functionality
+// @file
+// FormatString functionality
 
 #ifndef SOPHUS_FORMATSTRING_HPP
 #define SOPHUS_FORMATSTRING_HPP

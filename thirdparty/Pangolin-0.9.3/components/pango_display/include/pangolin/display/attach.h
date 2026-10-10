@@ -34,26 +34,26 @@
 namespace pangolin
 {
 
-/// Units for measuring screen distances.
+// Units for measuring screen distances.
 enum Unit {
     Fraction,
     Pixel,
     ReversePixel
 };
 
-/// Defines absolute or relative position from parent viewport edge.
-/// Constructors distinguised by whole pixels, or floating
-/// fraction in interval [0,1]
+// Defines absolute or relative position from parent viewport edge.
+// Constructors distinguised by whole pixels, or floating
+// fraction in interval [0,1]
 struct PANGOLIN_EXPORT Attach {
-    /// Attach to Left/Bottom edge
+    // Attach to Left/Bottom edge
     Attach() : unit(Fraction), p(0) {}
 
-    /// General constructor
+    // General constructor
     Attach(Unit unit, GLfloat p) : unit(unit), p(p) {}
 
-    /// Specify relative position in range [0,1].
-    /// 0 represents leftmost / bottom-most edge,
-    /// 1 represents rightmost / topmost edge
+    // Specify relative position in range [0,1].
+    // 0 represents leftmost / bottom-most edge,
+    // 1 represents rightmost / topmost edge
     Attach(GLfloat p) : unit(Fraction), p(p) {
         // Allow for numerical imprecision when checking usage.
         if( p < -1E-3 || 1.001 < p ) {
@@ -62,19 +62,19 @@ struct PANGOLIN_EXPORT Attach {
         }
     }
 
-    /// Specify absolute position from leftmost / bottom-most edge.
+    // Specify absolute position from leftmost / bottom-most edge.
     static Attach Pix(int p) {
         return Attach(p >=0 ? Pixel : ReversePixel, std::abs((float)p));
     }
 
-    /// Specify absolute position from rightmost / topmost edge.
+    // Specify absolute position from rightmost / topmost edge.
     static Attach ReversePix(int p) {
         return Attach(ReversePixel, (GLfloat)p);
     }
 
-    /// Specify relative position in range [0,1].
-    /// 0 represents leftmost / bottom-most edge,
-    /// 1 represents rightmost / topmost edge
+    // Specify relative position in range [0,1].
+    // 0 represents leftmost / bottom-most edge,
+    // 1 represents rightmost / topmost edge
     static Attach Frac(float frac) {
         return Attach(frac);
     }

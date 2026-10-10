@@ -7,7 +7,7 @@
 
 namespace lightning::miao {
 
-/// 禁止拷贝与复制
+// 禁止拷贝与复制
 #define DISALLOW_COPY(T)  \
    public:                \
     T(const T&) = delete; \

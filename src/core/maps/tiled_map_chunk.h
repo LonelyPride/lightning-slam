@@ -31,10 +31,10 @@ struct MapChunk {
      */
     void AddPoint(const PointType& pt);
 
-    /// 加载地图
+    // 加载地图
     void LoadCloud();
 
-    /// 卸载本区块
+    // 卸载本区块
     void Unload();
 
     int id_ = 0;                  // 该区块ID

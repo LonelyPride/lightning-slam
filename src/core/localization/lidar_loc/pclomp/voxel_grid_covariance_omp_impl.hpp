@@ -47,7 +47,7 @@
 
 #include "voxel_grid_covariance_omp.h"
 
-//////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 template <typename PointT>
 int pclomp::VoxelGridCovariance<PointT>::getNeighborhoodAtPoint(const Eigen::MatrixXi& relative_coordinates,
                                                                 const PointT& reference_point,
@@ -73,7 +73,7 @@ int pclomp::VoxelGridCovariance<PointT>::getNeighborhoodAtPoint(const Eigen::Mat
     return (static_cast<int>(neighbors.size()));
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 template <typename PointT>
 int pclomp::VoxelGridCovariance<PointT>::getNeighborhoodAtPoint(const PointT& reference_point,
                                                                 std::vector<LeafConstPtr>& neighbors) const {
@@ -84,7 +84,7 @@ int pclomp::VoxelGridCovariance<PointT>::getNeighborhoodAtPoint(const PointT& re
     return getNeighborhoodAtPoint(relative_coordinates, reference_point, neighbors);
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 template <typename PointT>
 int pclomp::VoxelGridCovariance<PointT>::getNeighborhoodAtPoint7(const PointT& reference_point,
                                                                  std::vector<LeafConstPtr>& neighbors) const {
@@ -102,7 +102,7 @@ int pclomp::VoxelGridCovariance<PointT>::getNeighborhoodAtPoint7(const PointT& r
     return getNeighborhoodAtPoint(relative_coordinates, reference_point, neighbors);
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 template <typename PointT>
 int pclomp::VoxelGridCovariance<PointT>::getNeighborhoodAtPoint1(const PointT& reference_point,
                                                                  std::vector<LeafConstPtr>& neighbors) const {

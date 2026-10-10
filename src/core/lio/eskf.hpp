@@ -34,7 +34,7 @@ class ESKF {
     using CovType = Eigen::Matrix<double, state_dim_, state_dim_>;  // 协方差矩阵
     using ProcessNoiseType = Eigen::Matrix<double, process_noise_dim_, process_noise_dim_>;
 
-    /// ESKF 观测类型
+    // ESKF 观测类型
     enum class ObsType {
         LIDAR,                  // 开源版本只有Lidar
         WHEEL_SPEED,            // 单独的轮速观测
@@ -50,17 +50,17 @@ class ESKF {
 
     ~ESKF() {}
 
-    /// 自定义观测模型中的相关信息
-    /// 观测由观测模型+观测函数组成，模型层面存储具体的结果，观测函数负责实现各矩阵的计算
-    /// TODO 观测模型已知时，维度可以事先指定（但是雷达匹配点数是不定的，所以这边无法指定矩阵行数）
+    // 自定义观测模型中的相关信息
+    // 观测由观测模型+观测函数组成，模型层面存储具体的结果，观测函数负责实现各矩阵的计算
+    // TODO 观测模型已知时，维度可以事先指定（但是雷达匹配点数是不定的，所以这边无法指定矩阵行数）
     struct CustomObservationModel {
         bool valid_ = true;
         bool converge_ = true;
 
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> R_;  // R 阵，观测噪声
 
-        /// NOTE 我们还是传H^T H 比较好，光传一个H会因为残差维度不对导致没法融合各类残差
-        /// 这个只需累加即可
+        // NOTE 我们还是传H^T H 比较好，光传一个H会因为残差维度不对导致没法融合各类残差
+        // 这个只需累加即可
         Eigen::Matrix<double, pose_obs_dim_, pose_obs_dim_> HTH_;
         Eigen::Matrix<double, pose_obs_dim_, 1> HTr_;
 
@@ -68,7 +68,7 @@ class ESKF {
         double lidar_residual_max_ = 0;
     };
 
-    /// 用户定义的观测模型函数，根据状态计算观测量和雅可比矩阵
+    // 用户定义的观测模型函数，根据状态计算观测量和雅可比矩阵
     using CustomObsFunction = std::function<void(NavState& s, CustomObservationModel& obs)>;
 
     struct Options {
@@ -81,7 +81,7 @@ class ESKF {
         StateVecType epsi_;    // 收敛条件
         bool use_aa_ = false;  // use anderson accleration
 
-        /// 速度clip
+        // 速度clip
         double vel_clip_norm_ = 1.0;
         double dv_ratio_ = 0.5;
 
@@ -93,15 +93,15 @@ class ESKF {
         double max_update_rotation_step_deg_ = 5.0;
         double max_update_velocity_step_ = 2.0;
 
-        /// 个人修改（2026-10-02，方案C）：非 LiDAR 观测（姿态/重力软观测）允许的迭代步长。
-        ///   为什么要单独放宽：重力观测在"世界系初始倾斜较大"时，单帧合理修正量天然可达十几度；
-        ///   若沿用 LiDAR 的 5° 上限，整个更新会被 x_ = start_x; return; 直接丢掉 ⇒ 大倾斜永远纠不回来，
-        ///   而 5° 这条线本来是给"点云匹配跳变"设的，对"姿态对齐"没有意义。
+        // 个人修改（2026-10-02，方案C）：非 LiDAR 观测（姿态/重力软观测）允许的迭代步长。
+        //   为什么要单独放宽：重力观测在"世界系初始倾斜较大"时，单帧合理修正量天然可达十几度；
+        //   若沿用 LiDAR 的 5° 上限，整个更新会被 x_ = start_x; return; 直接丢掉 ⇒ 大倾斜永远纠不回来，
+        //   而 5° 这条线本来是给"点云匹配跳变"设的，对"姿态对齐"没有意义。
         double max_update_rotation_step_deg_nonlidar_ = 30.0;
         double max_update_translation_step_nonlidar_ = 0.5;
     };
 
-    /// 初始化
+    // 初始化
     void Init(Options options) {
         lidar_obs_func_ = options.lidar_obs_func_;
         wheelspeed_obs_func_ = options.wheelspeed_obs_func_;
@@ -115,10 +115,10 @@ class ESKF {
         options_ = options;
     }
 
-    /// IMU预测
+    // IMU预测
     void Predict(const double& dt, const ProcessNoiseType& Q, const Vec3d& gyro, const Vec3d& acce);
 
-    /// 自定义模型更新
+    // 自定义模型更新
     void Update(ObsType obs, const double& R);
 
     // accessors
@@ -133,9 +133,9 @@ class ESKF {
     void SetUseAA(bool use_aa) { use_aa_ = use_aa; }
     void SetTime(double timestamp) { x_.timestamp_ = timestamp; }
 
-    /// 迭代次数
+    // 迭代次数
     int GetIterations() const { return iterations_; }
-    /// 最终平均观测误差
+    // 最终平均观测误差
     double GetFinalRes() const { return final_res_; }
 
    private:
@@ -155,7 +155,7 @@ class ESKF {
     int iterations_ = 0;
     double final_res_ = 0.0;
 
-    /// anderson acceleration?
+    // anderson acceleration?
     bool use_aa_ = false;
     AndersonAcceleration<double, state_dim_, 10> aa_;
 

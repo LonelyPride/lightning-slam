@@ -34,22 +34,22 @@ class AsyncMessageProcess {
     AsyncMessageProcess(ProcFunc proc_func, std::string name = "");
     ~AsyncMessageProcess() { Quit(); }
 
-    /// 设置处理函数
+    // 设置处理函数
     void SetProcFunc(ProcFunc proc_func) { custom_func_ = proc_func; }
 
-    /// 设置队列最大长度
+    // 设置队列最大长度
     void SetMaxSize(size_t size) { max_size_ = size; }
 
-    /// 开始处理消息
+    // 开始处理消息
     void Start();
 
-    /// 添加一条消息
+    // 添加一条消息
     void AddMessage(const T& msg);
 
-    /// 退出
+    // 退出
     void Quit();
 
-    /// 清空跳帧计数器，下一个数据会立即执行
+    // 清空跳帧计数器，下一个数据会立即执行
     void CleanSkipCnt();
 
     void SetName(std::string name) { name_ = std::move(name); }
@@ -70,7 +70,7 @@ class AsyncMessageProcess {
     size_t max_size_ = 40;
     std::string name_;
 
-    /// 跳帧
+    // 跳帧
     bool enable_skip_ = false;
     int skip_num_ = 0;
     int skip_cnt_ = 0;

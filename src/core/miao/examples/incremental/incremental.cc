@@ -159,7 +159,7 @@ int main(int argc, char** argv) {
                     "optimization", true);
             }
 
-            /// loop closure
+            // loop closure
             if (f == 0 || n == 1) {
                 continue;
             }

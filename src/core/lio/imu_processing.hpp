@@ -22,7 +22,7 @@
 
 namespace lightning {
 
-/// IMU处理类
+// IMU处理类
 class ImuProcess {
    public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -42,11 +42,24 @@ class ImuProcess {
     bool IsIMUInited() const { return imu_need_init_ == false; }
     void SetUseIMUFilter(bool b) { use_imu_filter_ = b; }
 
+    // 个人修改（2026-10-09，方案D）：加计比力【方向符号】（yaml: fasterlio.imu_acc_up_sign，默认 +1 = 旧行为）。
+    //
+    //   标准 IMU（本工程 val 平台实测 a0 = -x ⇒ 该单元 x 轴朝下）：静止读数 = +g·(上)。
+    //   但本平台（狗 + 该 Airy 驱动）实测读数 = -g·(上)，即驱动把比力方向反了号。两条独立实测证据（同一 bag）：
+    //     ① 地面平面 RANSAC（地面在传感器 +0.486 m 侧 ⇒ 上 = -法向）：angle(上_地面, â) = 179.23°；
+    //     ② tf_static 链 base_link→rslidartmp1(Ry110°)→laser_points_front(Rz-45°) 给出车体"上" =
+    //        (-0.6645,-0.6645,-0.342)：angle(该上, â) = 179.52°（与 ① 相差 0.42°）。
+    //   ⇒ 本平台必须设 -1；不设则世界系 z 指向物理下方（重力对齐把"下"当"上"），
+    //     车体/base_link 姿态整体差 180°（这正是用户看到的"坐标系朝向不一致"）。
+    //   本符号只改【比力方向】，量纲（g → m/s²）仍由 InferAccUnitScale() 推断，二者独立。
+    void SetAccUpSign(double s) { acc_up_sign_ = (s < 0.0) ? -1.0 : 1.0; }
+    double GetAccUpSign() const { return acc_up_sign_; }
+
     double GetMeanAccNorm() const { return mean_acc_.norm(); }
 
-    /// 个人修改（方案A+）：静止初始化窗口内的平均比力（IMU 系）。静止时它测的就是"上"方向，
-    ///   laser_mapping.cc 用它在本平台 auto 模式下自动确定 IMU→车辆 的安装旋转（对安装倾斜自动适应），
-    ///   与 IMUInit() 内部 init_state.rot_ 的重力对齐用的是同一个量。
+    // 个人修改（方案A+）：静止初始化窗口内的平均比力（IMU 系，已按 imu_acc_up_sign 定向 ⇒ 静止时它测的是"上"）。
+    //   laser_mapping.cc 用它在本平台 auto 模式下自动确定 IMU→车辆 的安装旋转（对安装倾斜自动适应），
+    //   与 IMUInit() 内部 init_state.rot_ 的重力对齐用的是同一个量。
     Vec3d GetMeanAcc() const { return mean_acc_; }
 
     // ---------------------------------------------------------------------------------------------
@@ -67,7 +80,7 @@ class ImuProcess {
     double GetInitAccDev() const { return init_acc_dev_; }
     double GetInitGyrNorm() const { return init_gyr_norm_; }
 
-    /// 个人修改（方案C）：静止窗口判定阈值（yaml 可选键覆盖，缺省值见成员初值）
+    // 个人修改（方案C）：静止窗口判定阈值（yaml 可选键覆盖，缺省值见成员初值）
     void SetInitStaticParams(double acc_tol, double gyr_tol, double std_rel_tol, double min_duration_s,
                              double max_duration_s, int max_wait_count) {
         init_static_acc_tol_ = acc_tol;
@@ -78,7 +91,7 @@ class ImuProcess {
         init_max_wait_count_ = max_wait_count;
     }
 
-    /// 个人修改（方案C）：过程噪声维度随状态扩到 15（新增加计零偏随机游走）
+    // 个人修改（方案C）：过程噪声维度随状态扩到 15（新增加计零偏随机游走）
     ESKF::ProcessNoiseType Q_;
     Vec3d cov_acc_;
     Vec3d cov_gyr_;
@@ -91,8 +104,8 @@ class ImuProcess {
     void IMUInit(const MeasureGroup &meas, ESKF &kf_state, int &N);
     void UndistortPcl(const MeasureGroup &meas, ESKF &kf_state, CloudPtr &pcl_out);
 
-    /// 个人修改（方案C）：由"静止窗口的平均比力模长"推断 IMU 的量纲因子。
-    ///   >0 返回推断出的比例因子（把原始读数换算到 m/s²）；<0 表示无法判断（调用方保持原值并告警）。
+    // 个人修改（方案C）：由"静止窗口的平均比力模长"推断 IMU 的量纲因子。
+    //   >0 返回推断出的比例因子（把原始读数换算到 m/s²）；<0 表示无法判断（调用方保持原值并告警）。
     static double InferAccUnitScale(double mean_acc_norm);
 
     static inline constexpr int max_init_count_ = 20;
@@ -110,11 +123,16 @@ class ImuProcess {
     Vec3d acc_s_last_ = Vec3d ::Zero();
     double acc_scale_factor_ = 1.0;
 
-    /// 个人修改（方案C）：最近一次的 IMU 系比力/角速度（给重力观测与自检用）
+    // 个人修改（2026-10-09，方案D）：比力方向符号（+1 = 标准：静止读数 = +g·(上)；-1 = 本平台驱动反号）。
+    //   由 yaml fasterlio.imu_acc_up_sign 经 laser_mapping.cc::LoadParamsFromYAML 调 SetAccUpSign() 设定；
+    //   缺省 +1 保证其它平台/旧配置行为不变。
+    double acc_up_sign_ = 1.0;
+
+    // 个人修改（方案C）：最近一次的 IMU 系比力/角速度（给重力观测与自检用）
     Vec3d acc_body_last_ = Vec3d::Zero();
     Vec3d angvel_body_last_ = Vec3d::Zero();
 
-    /// 个人修改（方案C）：静止窗口判据与自检量
+    // 个人修改（方案C）：静止窗口判据与自检量
     bool init_static_ok_ = false;      // 初始化窗口是否判为静止（重力对齐是否可信）
     double init_acc_norm_ = 0.0;       // 静止窗口平均比力模长（换算后，m/s²）
     double init_acc_dev_ = 0.0;        // | |a| - g |（m/s²）
@@ -127,7 +145,7 @@ class ImuProcess {
     double init_max_duration_s_ = 5.0;        // 最长等待时长（s，超时后带 WARNING 强制完成）
     int init_max_wait_count_ = 100;           // 最长等待帧数（约 10 s@10Hz，与上者取先到者）
 
-    /// 个人修改（方案C）：静止幅值误差允许用"比例修正"吸收的相对上限（超过则认为不是标度误差）
+    // 个人修改（方案C）：静止幅值误差允许用"比例修正"吸收的相对上限（超过则认为不是标度误差）
     static inline constexpr double kAccMagnitudeScaleFixTol = 0.03;
 
     double last_lidar_end_time_ = 0;
@@ -142,8 +160,8 @@ class ImuProcess {
 inline ImuProcess::ImuProcess() : b_first_frame_(true), imu_need_init_(true) {
     init_iter_num_ = 1;
     Q_.setZero();
-    /// 个人修改（方案C）：过程噪声由 12 维扩到 15 维，第 9~11 个对角项 = 加计零偏随机游走
-    ///   （前 9 项含义不变：0~2 陀螺白噪声、3~5 加计白噪声、6~8 陀螺零偏随机游走）
+    // 个人修改（方案C）：过程噪声由 12 维扩到 15 维，第 9~11 个对角项 = 加计零偏随机游走
+    //   （前 9 项含义不变：0~2 陀螺白噪声、3~5 加计白噪声、6~8 陀螺零偏随机游走）
     Q_.diagonal() << 1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-5, 1e-5, 1e-5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
     cov_acc_ = Vec3d(0.1, 0.1, 0.1);
     cov_gyr_ = Vec3d(0.1, 0.1, 0.1);
@@ -162,7 +180,7 @@ inline void ImuProcess::Reset() {
     angvel_last_.setZero();
     acc_scale_factor_ = 1.0;
 
-    /// 个人修改（方案C）：自检量一并复位
+    // 个人修改（方案C）：自检量一并复位
     acc_body_last_.setZero();
     angvel_body_last_.setZero();
     init_static_ok_ = false;
@@ -178,7 +196,7 @@ inline void ImuProcess::Reset() {
     cur_pcl_un_.reset(new PointCloudType());
 }
 
-/// 个人修改（方案C）：量纲推断（原来是写在 Process() 里的一段，抽出来供 IMUInit/Process 共用）
+// 个人修改（方案C）：量纲推断（原来是写在 Process() 里的一段，抽出来供 IMUInit/Process 共用）
 inline double ImuProcess::InferAccUnitScale(double mean_acc_norm) {
     if (mean_acc_norm > 0.5 && mean_acc_norm < 1.5) {
         return G_m_s2;  // 读数以 g 为单位
@@ -214,14 +232,15 @@ inline void ImuProcess::IMUInit(const MeasureGroup &meas, ESKF &kf_state, int &N
         init_time_first_ = meas.imu_.front()->timestamp;  // 个人修改（方案C）：窗口起点
         const auto &imu_acc = meas.imu_.front()->linear_acceleration;
         const auto &gyr_acc = meas.imu_.front()->angular_velocity;
-        mean_acc_ = imu_acc;
+        // 个人修改（2026-10-09，方案D）：按 imu_acc_up_sign 定向，使"静止读数 = +g·(上)"（世界系 z 才真的朝上）
+        mean_acc_ = imu_acc * acc_up_sign_;
         mean_gyr_ = gyr_acc;
     }
 
     for (const auto &imu : meas.imu_) {
         const auto &imu_acc = imu->linear_acceleration;
         const auto &gyr_acc = imu->angular_velocity;
-        cur_acc = imu_acc;
+        cur_acc = imu_acc * acc_up_sign_;  // 个人修改（2026-10-09，方案D）：与上面同一符号
         cur_gyr = gyr_acc;
 
         mean_acc_ += (cur_acc - mean_acc_) / N;
@@ -289,22 +308,25 @@ inline void ImuProcess::IMUInit(const MeasureGroup &meas, ESKF &kf_state, int &N
               << " (fix " << acc_scale_fix << "), |w|=" << init_gyr_norm_ << " rad/s, acc_std_rel=" << acc_std_rel
               << ", static=" << (init_static_ok_ ? "yes" : "NO");
 
-    /// 初始姿态：把静止时的“比力方向”（即竖直向上）显式对齐到世界系 +z，世界系重力固定为 (0,0,-G)。
-    ///
-    /// 原实现是直接把 IMU 系测得的重力方向写入 grav_：
-    ///     init_state.grav_ = -mean_acc_ / mean_acc_.norm() * G_m_s2;
-    /// 而 init_state.rot_ 保持默认的单位阵，这等价于令【世界系 = IMU 初始姿态系】。
-    /// 当 IMU 水平安装（z 朝上）时恰好得到“世界系 z 竖直向上”的正确结果；
-    /// 但 IMU 竖装时（例如重力沿 IMU +x 轴，静止比力 ≈ 9.81 -0.18 0.06），
-    /// 世界系 z 轴会变成车体前进方向，表现为：
-    ///   · odom/TF 中车体“掉头”看似绕前进方向翻滚（RViz 里机器人往天上翻）；
-    ///   · 依赖“z 朝上”的下游模块（g2p5 栅格地图假设地面为 z=常数、后端 with_height 高度约束、
-    ///     定位端 mask_z/mask_roll_pitch 自由度屏蔽）全部失效。
-    /// 这里改为显式重力对齐：世界系 z 轴严格竖直向上，重力固定为 (0,0,-G)。
-    /// 注意：对齐后首帧位姿不再等于单位阵，任何依赖“世界系 = IMU 初始姿态系”的解析式
-    ///      外参/锚点计算都会多转一个 q_align。
-    /// 个人修改（方案C）补充：只有 init_static_ok_ 时这一步才是"重力对齐"；否则它是"比力对齐"
-    ///      （可能包含运动加速度），此时会在上面打 WARNING，并由 laser_mapping 的重力观测在线纠正。
+    // 初始姿态：把静止时的“比力方向”（即竖直向上）显式对齐到世界系 +z，世界系重力固定为 (0,0,-G)。
+    //
+    // 原实现是直接把 IMU 系测得的重力方向写入 grav_：
+    //     init_state.grav_ = -mean_acc_ / mean_acc_.norm() * G_m_s2;
+    // 而 init_state.rot_ 保持默认的单位阵，这等价于令【世界系 = IMU 初始姿态系】。
+    // 当 IMU 水平安装（z 朝上）时恰好得到“世界系 z 竖直向上”的正确结果；
+    // 但 IMU 竖装时（例如重力沿 IMU +x 轴，静止比力 ≈ 9.81 -0.18 0.06），
+    // 世界系 z 轴会变成车体前进方向，表现为：
+    //   · odom/TF 中车体“掉头”看似绕前进方向翻滚（RViz 里机器人往天上翻）；
+    //   · 依赖“z 朝上”的下游模块（g2p5 栅格地图假设地面为 z=常数、后端 with_height 高度约束、
+    //     定位端 mask_z/mask_roll_pitch 自由度屏蔽）全部失效。
+    // 这里改为显式重力对齐：世界系 z 轴严格竖直向上，重力固定为 (0,0,-G)。
+    // 注意：对齐后首帧位姿不再等于单位阵，任何依赖“世界系 = IMU 初始姿态系”的解析式
+    //      外参/锚点计算都会多转一个 q_align。
+    // 个人修改（方案C）补充：只有 init_static_ok_ 时这一步才是"重力对齐"；否则它是"比力对齐"
+    //      （可能包含运动加速度），此时会在上面打 WARNING，并由 laser_mapping 的重力观测在线纠正。
+    // 个人修改（2026-10-09，方案D）：up_in_imu = mean_acc_.normalized() 中的 mean_acc_ 已按
+    //      fasterlio.imu_acc_up_sign 定向（上面累加处乘了 acc_up_sign_）⇒ 静止时它确实是"物理向上"。
+    //      本平台（狗）驱动比力反号，必须配 imu_acc_up_sign: -1；否则这里会把"下"对齐到世界 +z。
     const Vec3d up_in_imu = mean_acc_.normalized();
     const Quatd q_align = Quatd::FromTwoVectors(up_in_imu, Vec3d(0, 0, 1));
     init_state.rot_ = SO3(q_align.toRotationMatrix());
@@ -314,14 +336,14 @@ inline void ImuProcess::IMUInit(const MeasureGroup &meas, ESKF &kf_state, int &N
     init_state.ba_.setZero();  // 个人修改（方案C）：静止幅值误差已由 acc_scale_factor_ 吸收，ba 从 0 起在线估计
     kf_state.ChangeX(init_state);
 
-    /// 个人修改（方案C）：收紧初始协方差。
-    ///   原实现 init_P.setIdentity() ⇒ 姿态块方差 1.0 rad²（≈57°²）、位置 1 m²、速度 1 (m/s)²，
-    ///   即"初始姿态几乎完全不可信、位置/速度也随便动"。后果：
-    ///     · 首帧 LiDAR 更新会把姿态按第一帧点云的（可能退化的）几何拉过去，
-    ///       之后 P 迅速收缩 ⇒ 姿态被"冻住"，重力方向无人校正（这正是 24° 倾斜被长期保持的机制）；
-    ///     · 位置块过松会让首帧产生米级的位置跳变，后续靠 LiDAR 慢慢拉回。
-    ///   现在按"重力对齐后的真实不确定度"给出：姿态 1°、位置 10 cm、速度 0.2 m/s、
-    ///   陀螺零偏 3e-3 rad/s、加计零偏 0.05 m/s²。
+    // 个人修改（方案C）：收紧初始协方差。
+    //   原实现 init_P.setIdentity() ⇒ 姿态块方差 1.0 rad²（≈57°²）、位置 1 m²、速度 1 (m/s)²，
+    //   即"初始姿态几乎完全不可信、位置/速度也随便动"。后果：
+    //     · 首帧 LiDAR 更新会把姿态按第一帧点云的（可能退化的）几何拉过去，
+    //       之后 P 迅速收缩 ⇒ 姿态被"冻住"，重力方向无人校正（这正是 24° 倾斜被长期保持的机制）；
+    //     · 位置块过松会让首帧产生米级的位置跳变，后续靠 LiDAR 慢慢拉回。
+    //   现在按"重力对齐后的真实不确定度"给出：姿态 1°、位置 10 cm、速度 0.2 m/s、
+    //   陀螺零偏 3e-3 rad/s、加计零偏 0.05 m/s²。
     auto init_P = kf_state.GetP();
     init_P.setZero();
     constexpr double kInitPosStd = 0.1;      // m
@@ -385,7 +407,10 @@ inline void ImuProcess::UndistortPcl(const MeasureGroup &meas, ESKF &kf_state, C
 
         angvel_avr = .5 * (head->angular_velocity + tail->angular_velocity);
         acc_avr = .5 * (head->linear_acceleration + tail->linear_acceleration);
-        acc_avr = acc_avr * acc_scale_factor_;
+        // 个人修改（2026-10-09，方案D）：先按 imu_acc_up_sign 把比力定向成"静止时朝上"（与 IMUInit() 定义世界系
+        //   重力对齐用的是同一方向），再乘量纲因子。否则本平台会"世界系 z 朝下 + f 朝下"⇒ 预测项
+        //   v̇ = R·f + g 变成 -2g，去畸变/重力观测/自检全部反号。
+        acc_avr = acc_avr * (acc_up_sign_ * acc_scale_factor_);
 
         if (head->timestamp < last_lidar_end_time_) {
             dt = tail->timestamp - last_lidar_end_time_;
@@ -415,10 +440,10 @@ inline void ImuProcess::UndistortPcl(const MeasureGroup &meas, ESKF &kf_state, C
         /* save the poses at each IMU measurements */
         imu_state = kf_state.GetX();
         angvel_last_ = angvel_avr - imu_state.bg_;
-        /// 个人修改（方案C）：去畸变用的比力同样要扣掉加计零偏 ba。
-        ///   原实现 acc_s_last_ = rot_ * acc_avr（不扣任何加计零偏），与 get_f() 里的
-        ///   a_inertial = rot_*(acce - ba_) 不一致 ⇒ 去畸变与预测"差一个 0.041 m/s² 的常量"，
-        ///   在帧内 0.1 s 上体现为几毫米的形变偏差，累积到地图上就是系统性 z 偏移。
+        // 个人修改（方案C）：去畸变用的比力同样要扣掉加计零偏 ba。
+        //   原实现 acc_s_last_ = rot_ * acc_avr（不扣任何加计零偏），与 get_f() 里的
+        //   a_inertial = rot_*(acce - ba_) 不一致 ⇒ 去畸变与预测"差一个 0.041 m/s² 的常量"，
+        //   在帧内 0.1 s 上体现为几毫米的形变偏差，累积到地图上就是系统性 z 偏移。
         acc_s_last_ = imu_state.rot_ * (acc_avr - imu_state.ba_);
         angvel_body_last_ = angvel_last_;          // 个人修改（方案C）：供重力观测的静止门限判断
         acc_body_last_ = acc_avr;                  // 个人修改（方案C）：IMU 系比力（已乘量纲、未扣 ba）
@@ -463,7 +488,7 @@ inline void ImuProcess::UndistortPcl(const MeasureGroup &meas, ESKF &kf_state, C
         for (; it_pcl->time / double(1000) > head->offset_time && it_pcl != pcl_out->points.begin(); it_pcl--) {
             dt = it_pcl->time / double(1000) - head->offset_time;
 
-            /// dt 有时候存在非法数据
+            // dt 有时候存在非法数据
             if (dt < 0 || dt > lo::lidar_time_interval) {
                 // LOG(WARNING) << "find abnormal dt in cloud: " << dt;
                 continue;
@@ -499,7 +524,7 @@ inline void ImuProcess::Process(const MeasureGroup &meas, ESKF &kf_state, CloudP
     }
 
     if (imu_need_init_) {
-        /// The very first lidar frame
+        // The very first lidar frame
         IMUInit(meas, kf_state, init_iter_num_);
 
         imu_need_init_ = true;
@@ -508,12 +533,12 @@ inline void ImuProcess::Process(const MeasureGroup &meas, ESKF &kf_state, CloudP
 
         auto imu_state = kf_state.GetX();
 
-        /// 个人修改（方案C）：初始化完成条件由"采样数够了"改为
-        ///   ① 窗口够长（>= init_min_duration_s_） **且** 判为静止（init_static_ok_）；
-        ///   ② 或者等到超时（init_max_duration_s_ / init_max_wait_count_ 先到者）→ 带 WARNING 强制完成。
-        ///   原实现只要 max_init_count_(20) 个采样就完成（≈0.1~0.2 s），车辆只要在这 0.1~0.2 s 内
-        ///   有加减速/转弯，"重力对齐"就会被运动加速度污染（实测 4 m/s² 可造成 >20° 倾斜），
-        ///   而世界系一旦歪掉，整张地图与轨迹都会刚性倾斜 ⇒ z 轴持续下漂。
+        // 个人修改（方案C）：初始化完成条件由"采样数够了"改为
+        //   ① 窗口够长（>= init_min_duration_s_） **且** 判为静止（init_static_ok_）；
+        //   ② 或者等到超时（init_max_duration_s_ / init_max_wait_count_ 先到者）→ 带 WARNING 强制完成。
+        //   原实现只要 max_init_count_(20) 个采样就完成（≈0.1~0.2 s），车辆只要在这 0.1~0.2 s 内
+        //   有加减速/转弯，"重力对齐"就会被运动加速度污染（实测 4 m/s² 可造成 >20° 倾斜），
+        //   而世界系一旦歪掉，整张地图与轨迹都会刚性倾斜 ⇒ z 轴持续下漂。
         const double init_window = meas.imu_.back()->timestamp - init_time_first_;
         const bool init_ready_by_count = (init_iter_num_ > max_init_count_) && (init_window >= init_min_duration_s_);
         const bool init_timeout = (init_window >= init_max_duration_s_) || (init_iter_num_ > init_max_wait_count_);

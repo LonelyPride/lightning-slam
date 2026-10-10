@@ -33,7 +33,7 @@ void SetupOptimizer(Optimizer& optimizer, OptimizerConfig options) {
             LOG(FATAL) << "不能为稠密的问题设置稀疏求解器";
         }
 
-        /// TODO: dense but not Block Solver
+        // TODO: dense but not Block Solver
         solver = std::make_shared<BlockSolverType>(
             std::make_unique<LinearSolverDense<typename BlockSolverType::PoseMatrixType>>());
 
@@ -68,7 +68,7 @@ void SetupOptimizer(Optimizer& optimizer, OptimizerConfig options) {
     optimizer.SetConfig(options);
 }
 
-/// creator func
+// creator func
 template <int pose_dim = -1, int landmark_dim = -1>
 std::shared_ptr<Optimizer> SetupOptimizer(OptimizerConfig options) {
     auto opti = std::make_shared<Optimizer>();

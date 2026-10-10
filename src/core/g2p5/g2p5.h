@@ -51,14 +51,14 @@ class G2P5 {
         bool online_mode_ = true;  // 是否为在线模式
         bool esti_floor_ = false;  // 是否需要估计地面
 
-        /// 个人修改：换算后工作坐标系原点（= IMU 原点，因为 g2p5 的换算只换朝向、不搬原点）
-        ///   离地高度(m)。本平台 IMU 内置在雷达内（extrinsic_T≈4mm）⇒ 与"雷达安装高度"等同；
-        ///   若 IMU 与雷达分离，必须按 IMU 原点的高度填写。
+        // 个人修改：换算后工作坐标系原点（= IMU 原点，因为 g2p5 的换算只换朝向、不搬原点）
+        //   离地高度(m)。本平台 IMU 内置在雷达内（extrinsic_T≈4mm）⇒ 与"雷达安装高度"等同；
+        //   若 IMU 与雷达分离，必须按 IMU 原点的高度填写。
         double lidar_height_ = 0.0;
 
         double default_floor_height_ = -1.0;  // 默认的地面高度(通常在雷达下方)
-        double min_th_floor_ = 0.5;           /// 距离地面这个高的障碍物讲被扫入栅格地图中
-        double max_th_floor_ = 1.2;           /// 距离地面这个高的障碍物讲被扫入栅格地图中
+        double min_th_floor_ = 0.5;           // 距离地面这个高的障碍物讲被扫入栅格地图中
+        double max_th_floor_ = 1.2;           // 距离地面这个高的障碍物讲被扫入栅格地图中
         float usable_scan_range_ = 50.0;      // 用于计算栅格地图的最远障碍物距离
 
         double grid_map_resolution_ = 0.1;  // 栅格地图的分辨率，室外建议为0.1，室内可以用0.05
@@ -71,66 +71,66 @@ class G2P5 {
 
     using MapUpdateCallback = std::function<void(G2P5MapPtr map)>;
 
-    /// 从yaml中读取配置信息
+    // 从yaml中读取配置信息
     void Init(std::string yaml_path);
 
-    /// 当地图发生改变时，可以向外发布，在这里设置它的回调
+    // 当地图发生改变时，可以向外发布，在这里设置它的回调
     void SetMapUpdateCallback(MapUpdateCallback func) { map_update_cb_ = func; }
 
-    /// 退出渲染器
+    // 退出渲染器
     void Quit();
 
-    /// 增加一个关键帧，该关键帧会放到关键帧队列中
+    // 增加一个关键帧，该关键帧会放到关键帧队列中
     void PushKeyframe(Keyframe::Ptr kf);
 
-    /// 触发一次重绘，如果程序正在重绘过程中，再次触发会导致当前重绘过程停止
+    // 触发一次重绘，如果程序正在重绘过程中，再次触发会导致当前重绘过程停止
     void RedrawGlobalMap();
 
-    /// 获取最新的地图
+    // 获取最新的地图
     G2P5MapPtr GetNewestMap();
 
-    /// 设置是否需要最快渲染速度
+    // 设置是否需要最快渲染速度
     bool SetParallelRendering(bool enable_parallel = false) {
         parallel_render_ = enable_parallel;
         return true;
     }
 
-    /// 查看是否仍然有没绘制完的关键帧
+    // 查看是否仍然有没绘制完的关键帧
     bool IsBusy() { return is_busy_; }
 
    private:
-    /// 在已有的map上增加一些关键帧
+    // 在已有的map上增加一些关键帧
     bool AddKfToMap(const std::vector<Keyframe::Ptr> &kfs, G2P5MapPtr &map);
 
-    /// 对地图进行缩放
+    // 对地图进行缩放
     bool ResizeMap(const std::vector<Keyframe::Ptr> &kfs, G2P5MapPtr &map);
 
-    /// 渲染前端的地图
+    // 渲染前端的地图
     void RenderFront(Keyframe::Ptr kf);
 
-    /// 渲染后端的地图
+    // 渲染后端的地图
     void RenderBack();
 
-    /// 3D 点云转2D scan
+    // 3D 点云转2D scan
     void Convert3DTo2DScan(Keyframe::Ptr kf, G2P5MapPtr &map);
 
-    /// 个人修改：检测地面参数（入参是已换算到车辆系的点云，参数默认值见文件上方坐标系说明）
+    // 个人修改：检测地面参数（入参是已换算到车辆系的点云，参数默认值见文件上方坐标系说明）
     bool DetectPlaneCoeffs(const CloudPtr &cloud);
 
     void SetWhitePoints(const std::vector<Vec2d> &ang_distance_height, Keyframe::Ptr kf, G2P5MapPtr &map);
 
-    /// ---- 个人修改：坐标系换算（【雷达系】→【车辆 base_link 系】，g2p5 的实际工作坐标系）----
-    ///   g2p5 的 3D→2D 假设"z 轴向上、地面为 z=常数、极角在水平面内"，而本工程关键帧点云是
-    ///   【雷达系】(Airy 竖装：x=左, y=上, z=前)、位姿是【IMU 系】，直接使用会整体歪 90°。
-    ///   详细推导见 g2p5.cc 中这几个函数的实现处注释。
+    // ---- 个人修改：坐标系换算（【雷达系】→【车辆 base_link 系】，g2p5 的实际工作坐标系）----
+    //   g2p5 的 3D→2D 假设"z 轴向上、地面为 z=常数、极角在水平面内"，而本工程关键帧点云是
+    //   【雷达系】(Airy 竖装：x=左, y=上, z=前)、位姿是【IMU 系】，直接使用会整体歪 90°。
+    //   详细推导见 g2p5.cc 中这几个函数的实现处注释。
     SE3 ToWorkingPose(const SE3 &T_w_body) const;            // T_w_imu → T_w_vehicle
     CloudPtr ToWorkingCloud(const Keyframe::Ptr &kf) const;  // 【雷达系】点云 → 【车辆系】点云（深拷贝，不改原关键帧）
     Mat3d R_vehicle_lidar() const;                           // 【雷达系】→【车辆系】的旋转
 
     Options options_;
 
-    /// 个人修改："雷达系 → IMU 系"外参（yaml 的 fasterlio.extrinsic_R/T），Init() 时读入；
-    ///   与"IMU → 车辆"安装旋转(vehicle_frame::R_vehicle_imu())共同完成 雷达系→车辆系 的换算。
+    // 个人修改："雷达系 → IMU 系"外参（yaml 的 fasterlio.extrinsic_R/T），Init() 时读入；
+    //   与"IMU → 车辆"安装旋转(vehicle_frame::R_vehicle_imu())共同完成 雷达系→车辆系 的换算。
     SE3 T_imu_lidar_;
 
     std::atomic_bool parallel_render_ = false;  // 是否需要并行渲染
@@ -144,13 +144,13 @@ class G2P5 {
     std::mutex newest_map_mutex_;
     G2P5MapPtr newest_map_ = nullptr;
 
-    /// 前端相关
+    // 前端相关
     std::mutex frontend_mutex_;                                         // 前端锁
     G2P5MapPtr frontend_map_ = nullptr;                                 // 前端最新绘制的地图
     Keyframe::Ptr frontend_current_ = nullptr;                          // 前端正在绘制的关键帧
     sys::AsyncMessageProcess<Keyframe::Ptr> draw_frontend_map_thread_;  // 前端绘制地图的线程
 
-    /// 后端相关
+    // 后端相关
     std::thread draw_backend_map_thread_;           // 后端重绘的线程
     std::atomic_bool backend_redraw_flag_ = false;  // 后端重绘的flag
     G2P5MapPtr backend_map_ = nullptr;              // 正在绘制的地图

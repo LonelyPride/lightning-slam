@@ -29,14 +29,14 @@ class PoseExtrapolator {
     PoseExtrapolator();
     ~PoseExtrapolator();
 
-    /// DR增量 + 内部补偿量 = 外推结果
+    // DR增量 + 内部补偿量 = 外推结果
     bool AddDRLocAndExtrapolate(const NavState& dr_loc, SE3& output_pose);
     bool AddDRLocAndExtrapolate(const NavState& dr_loc, LocalizationResult& output_loc_res);
 
-    /// 查询同一时刻的pose，给出补偿量（只补偿平移，是相对量）
+    // 查询同一时刻的pose，给出补偿量（只补偿平移，是相对量）
     bool AddLidarOdomLoc(const NavState& lo_loc);
 
-    /// 重置PGO视角下的补偿量（平移+旋转，map系下的绝对量）（第一次添加PGOLoc时启动内部逻辑）
+    // 重置PGO视角下的补偿量（平移+旋转，map系下的绝对量）（第一次添加PGOLoc时启动内部逻辑）
     bool AddPGOLoc(const LocalizationResult& pgo_loc);
 
     bool is_initialized() {

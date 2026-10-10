@@ -26,7 +26,7 @@ LoopClosing::~LoopClosing() {
 }
 
 void LoopClosing::Init(const std::string yaml_path) {
-    /// setup miao
+    // setup miao
     miao::OptimizerConfig config(miao::AlgorithmType::LEVENBERG_MARQUARDT,
                                  miao::LinearSolverType::LINEAR_SOLVER_SPARSE_EIGEN, false);
     config.incremental_mode_ = true;
@@ -116,7 +116,7 @@ void LoopClosing::DetectLoopCandidates() {
         }
 
         if (abs(int(kf->GetID() - cur_kf_->GetID())) < options_.closest_id_th_) {
-            /// 在同一条轨迹中，如果间隔太近，就不考虑回环
+            // 在同一条轨迹中，如果间隔太近，就不考虑回环
             break;
         }
 
@@ -213,7 +213,7 @@ void LoopClosing::ComputeForCandidate(lightning::LoopCandidate& c) {
 
     Mat4f Tw2 = kf2->GetOptPose().matrix().cast<float>();
 
-    /// 不同分辨率下的匹配
+    // 不同分辨率下的匹配
     CloudPtr output(new PointCloudType);
     std::vector<double> res{10.0, 5.0, 2.0, 1.0};
 
@@ -258,7 +258,7 @@ void LoopClosing::PoseOptimization() {
     optimizer_->AddVertex(v);
     kf_vert_.emplace_back(v);
 
-    /// 上一个关键帧的运动约束
+    // 上一个关键帧的运动约束
     for (int i = 1; i < 3; i++) {
         int id = cur_kf_->GetID() - i;
         if (id >= 0) {
@@ -275,7 +275,7 @@ void LoopClosing::PoseOptimization() {
     }
 
     if (options_.with_height_) {
-        /// 高度约束
+        // 高度约束
         auto e = std::make_shared<miao::EdgeHeightPrior>();
         e->SetVertex(0, v);
         e->SetMeasurement(0);
@@ -283,7 +283,7 @@ void LoopClosing::PoseOptimization() {
         optimizer_->AddEdge(e);
     }
 
-    /// 回环的约束
+    // 回环的约束
     for (auto& c : candidates_) {
         auto e = std::make_shared<miao::EdgeSE3>();
         e->SetVertex(0, optimizer_->GetVertex(c.idx1_));
@@ -312,7 +312,7 @@ void LoopClosing::PoseOptimization() {
 
     optimizer_->Optimize(20);
 
-    /// remove outliers
+    // remove outliers
     int cnt_outliers = 0;
     for (auto& e : edge_loops_) {
         if (e->GetRobustKernel() == nullptr) {
@@ -331,7 +331,7 @@ void LoopClosing::PoseOptimization() {
         LOG(INFO) << "loop outliers: " << cnt_outliers << "/" << edge_loops_.size();
     }
 
-    /// get results
+    // get results
     for (auto& vert : kf_vert_) {
         SE3 pose = vert->Estimate();
         all_keyframes_[vert->GetId()]->SetOptPose(pose);

@@ -10,7 +10,7 @@
 
 namespace lightning::g2p5 {
 
-/// 子网格定义，坐标系与MapToGrid类似
+// 子网格定义，坐标系与MapToGrid类似
 class SubGrid {
    public:
     static inline constexpr int SUB_GRID_SIZE = 4;
@@ -22,7 +22,7 @@ class SubGrid {
     SubGrid(const SubGrid &other);
     SubGrid &operator=(const SubGrid &other);
 
-    /// 设置某个网格的占据或者非占据
+    // 设置某个网格的占据或者非占据
     void SetGridHitPoint(bool hit, int sub_xi, int sub_yi, float height) {
         UL lock(data_mutex_);
         if (grid_data_ == nullptr) {
@@ -63,13 +63,13 @@ class SubGrid {
         grid_data_[index].hit_cnt_ = 0;
     }
 
-    /// 判定数据是否为空
+    // 判定数据是否为空
     bool IsEmpty() {
         UL lock(data_mutex_);
         return grid_data_ == nullptr;
     }
 
-    /// 获取hit cnt和visit cnt
+    // 获取hit cnt和visit cnt
     void GetHitAndVisit(int sx, int sy, unsigned int &hit_cnt, unsigned int &visit_cnt) {
         UL lock(data_mutex_);
         GridData &d = grid_data_[sx + sy * width_];
@@ -82,7 +82,7 @@ class SubGrid {
     // 分配这个grid的内存
     void MallocGrid();
 
-    /// 子网格的大小
+    // 子网格的大小
     static inline constexpr int width_ = (1 << SUB_GRID_SIZE);
     static inline constexpr int width_2_ = (1 << SUB_GRID_SIZE) * (1 << SUB_GRID_SIZE);
 

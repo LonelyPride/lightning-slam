@@ -8,6 +8,9 @@
 import os, re, struct, sys
 import numpy as np
 
+# 抓浮点数（含科学计数法），parse_log() 解析 R_vehicle_imu 三行时用
+_FLOAT = re.compile(r'[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?')
+
 
 def Rz(a):
     c, s = np.cos(a), np.sin(a)
@@ -25,12 +28,24 @@ def Rx(a):
 
 
 def parse_log(log):
-    """返回 (poses[pos3, rpy3(rad)] 列表, M=R_vehicle_imu)"""
+    """返回 (poses[pos3, rpy3(rad)] 列表, M=R_vehicle_imu)
+
+    注意：R_vehicle_imu 的三行里可能出现科学计数（如 2.77556e-17）。
+    早先这里用 re.sub(r'[^\\d\\.\\-\\+\\s]', ' ', ...) 清洗，会把 'e' 也当成杂字符删掉，
+    于是 2.77556e-17 被切成两个数 ⇒ 行内个数不一致 ⇒ np.stack 直接报错。
+    现在改成"逐个抓浮点数"（自然支持 e 记法），正常写法结果完全一致。
+    """
     lines = open(log, errors='ignore').read().splitlines()
     M = None
     for i, l in enumerate(lines):
         if 'R_vehicle_imu =' in l:
-            rows = [np.fromstring(re.sub(r'[^\d\.\-\+\s]', ' ', lines[i + 1 + k]), sep=' ') for k in range(3)]
+            rows = []
+            for k in range(3):
+                vals = [float(v) for v in _FLOAT.findall(lines[i + 1 + k])]
+                if len(vals) < 3:
+                    raise ValueError('parse_log: R_vehicle_imu 第 %d 行不足 3 个数：%r'
+                                     % (k + 1, lines[i + 1 + k]))
+                rows.append(vals[:3])
             M = np.stack(rows)
             break
     pos, rpy = [], []

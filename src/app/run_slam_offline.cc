@@ -16,7 +16,7 @@
 DEFINE_string(input_bag, "", "输入数据包");
 DEFINE_string(config, "./config/default.yaml", "配置文件");
 
-/// 运行一个LIO前端，带可视化
+// 运行一个LIO前端，带可视化
 int main(int argc, char** argv) {
     google::InitGoogleLogging(argv[0]);
     FLAGS_colorlogtostderr = true;
@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
 
     SlamSystem slam(options);
 
-    /// 实时模式好像掉帧掉的比较厉害？
+    // 实时模式好像掉帧掉的比较厉害？
 
     if (!slam.Init(FLAGS_config)) {
         LOG(ERROR) << "failed to init slam";
@@ -51,20 +51,20 @@ int main(int argc, char** argv) {
     std::string imu_topic = yaml.GetValue<std::string>("common", "imu_topic");
 
     rosbag
-        /// IMU 的处理
+        // IMU 的处理
         .AddImuHandle(imu_topic,
                       [&slam](IMUPtr imu) {
                           slam.ProcessIMU(imu);
                           return true;
                       })
 
-        /// lidar 的处理
+        // lidar 的处理
         .AddPointCloud2Handle(lidar_topic,
                               [&slam](sensor_msgs::msg::PointCloud2::SharedPtr msg) {
                                   slam.ProcessLidar(msg);
                                   return true;
                               })
-        /// livox 的处理
+        // livox 的处理
         .AddLivoxCloudHandle("/livox/lidar",
                              [&slam](livox_ros_driver2::msg::CustomMsg::SharedPtr cloud) {
                                  slam.ProcessLidar(cloud);

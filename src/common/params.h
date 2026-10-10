@@ -14,7 +14,7 @@ namespace lightning {
 
 constexpr double GRAVITY_ = 9.7946;  // Gravity const in Shanghai/China
 
-/// 激光类型
+// 激光类型
 enum class SensorType {
     VELODYNE,  // 威力登
     OUSTER,    // ouster

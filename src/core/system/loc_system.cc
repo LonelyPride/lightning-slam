@@ -19,8 +19,8 @@
 
 namespace lightning {
 
-/// 个人修改（2026-10-01）：geometry_msgs 的 TransformStamped → SE3（旋转用四元数，位置直接取）。
-///   只在本文件内部使用；四元数非法（范数≈0）时按单位旋转处理，避免 NaN 传下去。
+// 个人修改（2026-10-01）：geometry_msgs 的 TransformStamped → SE3（旋转用四元数，位置直接取）。
+//   只在本文件内部使用；四元数非法（范数≈0）时按单位旋转处理，避免 NaN 传下去。
 static SE3 TransformToSE3(const geometry_msgs::msg::TransformStamped &tf) {
     Eigen::Quaterniond q(tf.transform.rotation.w, tf.transform.rotation.x, tf.transform.rotation.y,
                          tf.transform.rotation.z);
@@ -34,12 +34,12 @@ static SE3 TransformToSE3(const geometry_msgs::msg::TransformStamped &tf) {
 }
 
 LocSystem::LocSystem(LocSystem::Options options) : options_(options) {
-    /// handle ctrl-c
+    // handle ctrl-c
     signal(SIGINT, lightning::debug::SigHandle);
 }
 
 LocSystem::~LocSystem() {
-    /// 个人修改（2026-10-01）：先让栅格地图发布线程退出并 join，避免线程还在访问已析构的成员
+    // 个人修改（2026-10-01）：先让栅格地图发布线程退出并 join，避免线程还在访问已析构的成员
     map_pub_quit_ = true;
     if (map_pub_thread_.joinable()) {
         map_pub_thread_.join();
@@ -49,8 +49,8 @@ LocSystem::~LocSystem() {
         loc_->Finish();
     }
 
-    /// 个人修改（2026-10-01）：定位线程停掉之后（TF 回调不会再被调用）再拆 TF：
-    ///   TransformListener 析构时会 cancel 并 join 它自己的监听线程，必须在 node_ 析构之前完成。
+    // 个人修改（2026-10-01）：定位线程停掉之后（TF 回调不会再被调用）再拆 TF：
+    //   TransformListener 析构时会 cancel 并 join 它自己的监听线程，必须在 node_ 析构之前完成。
     tf_listener_.reset();
     tf_buffer_.reset();
 }
@@ -64,11 +64,11 @@ bool LocSystem::Init(const std::string &yaml_path) {
 
     std::string map_path = yaml.GetValue<std::string>("system", "map_path");
 
-    /// 个人修改（2026-10-01）：栅格地图话题发布配置（`system.publish_map.*`）。
-    ///   这一块【全部是可选键】，因此用 YAML_IO 的 HasValue 探测后再取值
-    ///   （与下面 common.initial_pose_* 的处理方式一致）：
-    ///   旧 yaml 没有这一段时保持 MapPublishOptions 里的默认值，新二进制照常启动，不会抛 YAML 异常。
-    ///   兼容性建议：把【发布间隔】与【话题名】放配置里，下游按需改动不必重新编译。
+    // 个人修改（2026-10-01）：栅格地图话题发布配置（`system.publish_map.*`）。
+    //   这一块【全部是可选键】，因此用 YAML_IO 的 HasValue 探测后再取值
+    //   （与下面 common.initial_pose_* 的处理方式一致）：
+    //   旧 yaml 没有这一段时保持 MapPublishOptions 里的默认值，新二进制照常启动，不会抛 YAML 异常。
+    //   兼容性建议：把【发布间隔】与【话题名】放配置里，下游按需改动不必重新编译。
     map_dir_ = map_path;
     {
         if (yaml.HasValue("system", "publish_map", "enable")) {
@@ -106,8 +106,8 @@ bool LocSystem::Init(const std::string &yaml_path) {
         }
     }
 
-    /// 个人修改（2026-10-01）：TF 发布配置（`system.tf.*`）。同样【全部是可选键】，
-    ///   旧 yaml（没有 system.tf）保持 TfOptions 里的默认值（= 发 map→odom，与车上 TF 不冲突）。
+    // 个人修改（2026-10-01）：TF 发布配置（`system.tf.*`）。同样【全部是可选键】，
+    //   旧 yaml（没有 system.tf）保持 TfOptions 里的默认值（= 发 map→odom，与车上 TF 不冲突）。
     tf_options_.enable_ = options_.pub_tf_;
     {
         if (yaml.HasValue("system", "tf", "enable")) {
@@ -163,7 +163,7 @@ bool LocSystem::Init(const std::string &yaml_path) {
 
     LOG(INFO) << "online mode, creating ros2 node ... ";
 
-    /// subscribers
+    // subscribers
     node_ = std::make_shared<rclcpp::Node>("lightning_slam");
 
     imu_topic_ = yaml.GetValue<std::string>("common", "imu_topic");
@@ -193,9 +193,9 @@ bool LocSystem::Init(const std::string &yaml_path) {
             Timer::Evaluate([&]() { ProcessLidar(cloud); }, "Proc Lidar", true);
         });
 
-    /// 个人修改（2026-10-01）：手动初始位姿话题（RViz "2D Pose Estimate" → /initialpose）。
-    ///   两个键都是【新增的可选项】，用 YAML_IO::HasValue 探测后取默认值，
-    ///   这样用旧 yaml（没有这两个键）也能正常启动。
+    // 个人修改（2026-10-01）：手动初始位姿话题（RViz "2D Pose Estimate" → /initialpose）。
+    //   两个键都是【新增的可选项】，用 YAML_IO::HasValue 探测后取默认值，
+    //   这样用旧 yaml（没有这两个键）也能正常启动。
     if (yaml.HasValue("common", "initial_pose_topic")) {
         initial_pose_topic_ = yaml.GetValue<std::string>("common", "initial_pose_topic");
     }
@@ -212,7 +212,7 @@ bool LocSystem::Init(const std::string &yaml_path) {
     }
 
     if (!initial_pose_topic_.empty()) {
-        /// 队列深度取 1：手动点选只关心"最后一次点击"，不需要把历史消息全部重放一遍
+        // 队列深度取 1：手动点选只关心"最后一次点击"，不需要把历史消息全部重放一遍
         initial_pose_sub_ = node_->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
             initial_pose_topic_, rclcpp::QoS(1),
             [this](geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg) { OnInitialPose(msg); });
@@ -223,11 +223,11 @@ bool LocSystem::Init(const std::string &yaml_path) {
                   << ")";
     }
 
-    /// 个人修改（2026-10-01）：栅格地图话题发布（system.publish_map.*）。
-    ///   用【独立线程】而不是 rclcpp timer：构造一帧 OccupancyGrid（几十万~百万格）比较费时，
-    ///   放在 spin 线程里会挡住 IMU/点云回调（定位会掉帧）。
+    // 个人修改（2026-10-01）：栅格地图话题发布（system.publish_map.*）。
+    //   用【独立线程】而不是 rclcpp timer：构造一帧 OccupancyGrid（几十万~百万格）比较费时，
+    //   放在 spin 线程里会挡住 IMU/点云回调（定位会掉帧）。
     if (map_pub_options_.enable_) {
-        /// 队列深度 1：下游只关心"最新的地图"；地图是持续发送的，丢一帧不影响
+        // 队列深度 1：下游只关心"最新的地图"；地图是持续发送的，丢一帧不影响
         map_pub_ = node_->create_publisher<nav_msgs::msg::OccupancyGrid>(map_pub_options_.topic_, rclcpp::QoS(1));
 
         map_pub_thread_ = std::thread([this]() { MapPublishLoop(); });
@@ -242,8 +242,8 @@ bool LocSystem::Init(const std::string &yaml_path) {
     if (tf_options_.enable_) {
         tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(node_);
 
-        /// 个人修改（2026-10-01）：mode=map_odom 时需要先知道车上已有的 odom→base_link，
-        ///   故额外建一个 tf2 监听（只订阅 /tf、/tf_static，不发任何东西）。
+        // 个人修改（2026-10-01）：mode=map_odom 时需要先知道车上已有的 odom→base_link，
+        //   故额外建一个 tf2 监听（只订阅 /tf、/tf_static，不发任何东西）。
         if (tf_options_.publish_map_to_odom_) {
             StartTfListener();
             LOG(INFO) << "tf 发布已开启: " << tf_options_.map_frame_id_ << "→" << tf_options_.odom_frame_id_
@@ -277,10 +277,10 @@ void LocSystem::SetInitPose(const SE3 &pose) {
 }
 
 void LocSystem::Start() {
-    /// 个人修改：不再注入 SE3() 当初始位姿。
-    ///   定位端算的是雷达系位姿 T_map_lidar，而"雷达系与世界系重合"并不成立
-    ///   （差 lidar→IMU 外参、IMU→车辆安装角两级外参），单位阵是错误种子；
-    ///   交给地图功能点 start（index.txt，正确的雷达系位姿）初始化。
+    // 个人修改：不再注入 SE3() 当初始位姿。
+    //   定位端算的是雷达系位姿 T_map_lidar，而"雷达系与世界系重合"并不成立
+    //   （差 lidar→IMU 外参、IMU→车辆安装角两级外参），单位阵是错误种子；
+    //   交给地图功能点 start（index.txt，正确的雷达系位姿）初始化。
     LOG(INFO) << "start loc without external init pose, use map functional point 'start' instead";
     loc_started_ = true;
 }
@@ -294,8 +294,8 @@ void LocSystem::SetInitialPoseFromVehicle(const Eigen::Quaterniond &q, const Eig
     LOG(INFO) << "[manual init] 收到车辆(base_link)系位姿，将重新初始化定位：t = " << t.transpose() << ", q(xyz w) = "
               << q.x() << ", " << q.y() << ", " << q.z() << ", " << q.w();
 
-    /// 手动给了位姿本身就意味着"现在开始/继续定位"（与 SetInitPose 一致），
-    /// 这样即使启动时忘了 Start()，手动点选也能让数据流进入定位模块。
+    // 手动给了位姿本身就意味着"现在开始/继续定位"（与 SetInitPose 一致），
+    // 这样即使启动时忘了 Start()，手动点选也能让数据流进入定位模块。
     loc_started_ = true;
     loc_->SetExternalVehiclePose(q, t);
 }
@@ -326,9 +326,9 @@ void LocSystem::OnInitialPose(const geometry_msgs::msg::PoseWithCovarianceStampe
     q.normalize();
     const Vec3d t(p.x, p.y, p.z);
 
-    /// frame_id 提示：本工程的地图帧名固定为 "map"（见 localization_result.cc ToGeoMsg 发布的 map→base_link），
-    ///   RViz 的 2D Pose Estimate 给的就是【RViz Fixed Frame】下的 base_link 位姿，所以正常应为 map。
-    ///   其它帧名只提示、不拒绝（外部脚本可能留空或使用自定义帧名）。
+    // frame_id 提示：本工程的地图帧名固定为 "map"（见 localization_result.cc ToGeoMsg 发布的 map→base_link），
+    //   RViz 的 2D Pose Estimate 给的就是【RViz Fixed Frame】下的 base_link 位姿，所以正常应为 map。
+    //   其它帧名只提示、不拒绝（外部脚本可能留空或使用自定义帧名）。
     if (!msg->header.frame_id.empty() && msg->header.frame_id != "map") {
         LOG(WARNING) << "[manual init] initial pose 的 frame_id = \"" << msg->header.frame_id
                      << "\"，不是本工程的地图帧 \"map\"；请确认 RViz 的 Fixed Frame 是否被改过";
@@ -365,38 +365,38 @@ void LocSystem::Spin() {
     }
 }
 
-/// ---------------------------------------------------------------------------
-/// 个人修改（2026-10-01）：TF 发布 —— 把定位接到【车上已有的 TF 树】上
-///
-///  车上原有的 TF 树（本平台实测，取自 rosbag 的 /tf 与 /tf_static）：
-///      odom --(动态)--> base_footprint --(静态)--> base_link --(静态)--> laser_points_* / uwb_*
-///  即 base_link 的父节点是 base_footprint，base_footprint 的父节点是 odom。
-///
-///  本工程旧行为是【直接发 map→base_link】（LocalizationResult::ToGeoMsg），
-///  这会让 base_link 出现【两个父节点】(base_footprint 与 map)：TF 树冲突，
-///  下游（RViz / 规划 / Nav2）要么报 "multiple parents"，要么只认其中一条，画面/坐标乱跳。
-///
-///  正确做法：定位只负责"世界系那一段"，即补 map→odom 这一条边：
-///      ① 查车上已有的 odom→base_link（T_odom_base，tf2 会穿过 base_footprint 自动串联）；
-///      ② 与定位结果 T_map_base 反推   T_map_odom = T_map_base · (T_odom_base)⁻¹  并发布。
-///  最终 TF 树完整且无冲突：  map → odom → base_footprint → base_link → ...
-///
-///  语义：map→odom 就是里程计系的漂移修正量（车静止时缓慢变化）；
-///       下游以 map 为 fixed frame 查 base_link，得到的仍是定位位姿，与旧行为数值等价。
-///
-///  时标：优先按定位结果的时间戳查（tf2 会插值，精度最高）；
-///       查不到（如刚启动、车上 TF 时标滞后）则退化为"取最新可用"；
-///       两者都失败时【本帧不发 TF】并给出节流告警 —— 不退回 map→base_link，避免又出现双父节点。
-///
-///  线程：本函数由定位结果回调调用，运行在定位工作线程（AsyncMessageProcess）里，
-///       因此默认不加等待（lookup_timeout=0），以免拖慢定位输出。
-/// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// 个人修改（2026-10-01）：TF 发布 —— 把定位接到【车上已有的 TF 树】上
+//
+//  车上原有的 TF 树（本平台实测，取自 rosbag 的 /tf 与 /tf_static）：
+//      odom --(动态)--> base_footprint --(静态)--> base_link --(静态)--> laser_points_* / uwb_*
+//  即 base_link 的父节点是 base_footprint，base_footprint 的父节点是 odom。
+//
+//  本工程旧行为是【直接发 map→base_link】（LocalizationResult::ToGeoMsg），
+//  这会让 base_link 出现【两个父节点】(base_footprint 与 map)：TF 树冲突，
+//  下游（RViz / 规划 / Nav2）要么报 "multiple parents"，要么只认其中一条，画面/坐标乱跳。
+//
+//  正确做法：定位只负责"世界系那一段"，即补 map→odom 这一条边：
+//      ① 查车上已有的 odom→base_link（T_odom_base，tf2 会穿过 base_footprint 自动串联）；
+//      ② 与定位结果 T_map_base 反推   T_map_odom = T_map_base · (T_odom_base)⁻¹  并发布。
+//  最终 TF 树完整且无冲突：  map → odom → base_footprint → base_link → ...
+//
+//  语义：map→odom 就是里程计系的漂移修正量（车静止时缓慢变化）；
+//       下游以 map 为 fixed frame 查 base_link，得到的仍是定位位姿，与旧行为数值等价。
+//
+//  时标：优先按定位结果的时间戳查（tf2 会插值，精度最高）；
+//       查不到（如刚启动、车上 TF 时标滞后）则退化为"取最新可用"；
+//       两者都失败时【本帧不发 TF】并给出节流告警 —— 不退回 map→base_link，避免又出现双父节点。
+//
+//  线程：本函数由定位结果回调调用，运行在定位工作线程（AsyncMessageProcess）里，
+//       因此默认不加等待（lookup_timeout=0），以免拖慢定位输出。
+// ---------------------------------------------------------------------------
 void LocSystem::PublishTf(const geometry_msgs::msg::TransformStamped &pose) {
     if (tf_broadcaster_ == nullptr) {
         return;
     }
 
-    /// 老行为（system.tf.mode = map_base）：直接转发定位结果，不做 odom 合成
+    // 老行为（system.tf.mode = map_base）：直接转发定位结果，不做 odom 合成
     if (!tf_options_.publish_map_to_odom_ || tf_buffer_ == nullptr) {
         tf_broadcaster_->sendTransform(pose);
         return;
@@ -406,8 +406,8 @@ void LocSystem::PublishTf(const geometry_msgs::msg::TransformStamped &pose) {
     const std::string base_frame = pose.child_frame_id.empty() ? tf_options_.base_frame_id_ : pose.child_frame_id;
     const std::string odom_frame = tf_options_.odom_frame_id_;
 
-    /// ① 查车上已有的 odom→base_link（中间帧如 base_footprint 由 tf2 自动串联）
-    ///   时间用 rclcpp::Time + 本节点时钟类型，避免与 Buffer 内部时钟类型不一致（sim time 场景）
+    // ① 查车上已有的 odom→base_link（中间帧如 base_footprint 由 tf2 自动串联）
+    //   时间用 rclcpp::Time + 本节点时钟类型，避免与 Buffer 内部时钟类型不一致（sim time 场景）
     const rclcpp::Time stamp(pose.header.stamp, node_->get_clock()->get_clock_type());
 
     geometry_msgs::msg::TransformStamped odom_base;
@@ -417,7 +417,7 @@ void LocSystem::PublishTf(const geometry_msgs::msg::TransformStamped &pose) {
                                                 rclcpp::Duration::from_seconds(tf_options_.lookup_timeout_));
         ok = true;
     } catch (const tf2::TransformException &) {
-        /// ② 退化：取最新可用的一帧（例如刚启动时缓存里还没有早于该时刻的样本）
+        // ② 退化：取最新可用的一帧（例如刚启动时缓存里还没有早于该时刻的样本）
         try {
             odom_base = tf_buffer_->lookupTransform(odom_frame, base_frame, tf2::TimePointZero,
                                                     tf2::durationFromSec(tf_options_.lookup_timeout_));
@@ -428,8 +428,8 @@ void LocSystem::PublishTf(const geometry_msgs::msg::TransformStamped &pose) {
     }
 
     if (!ok) {
-        /// 查不到就不发（宁可暂时没有 map→odom，也不要退回 map→base_link 制造双父节点）。
-        /// 告警按 5 s 节流，避免刷屏。
+        // 查不到就不发（宁可暂时没有 map→odom，也不要退回 map→base_link 制造双父节点）。
+        // 告警按 5 s 节流，避免刷屏。
         const double now = ToSec(pose.header.stamp);
         if (tf_warn_stamp_ < 0 || now - tf_warn_stamp_ > 5.0) {
             tf_warn_stamp_ = now;
@@ -441,7 +441,7 @@ void LocSystem::PublishTf(const geometry_msgs::msg::TransformStamped &pose) {
         return;
     }
 
-    /// ③ 合成 T_map_odom = T_map_base · (T_odom_base)⁻¹
+    // ③ 合成 T_map_odom = T_map_base · (T_odom_base)⁻¹
     const SE3 T_map_base = TransformToSE3(pose);
     const SE3 T_map_odom = T_map_base * TransformToSE3(odom_base).inverse();
 
@@ -471,13 +471,13 @@ void LocSystem::PublishTf(const geometry_msgs::msg::TransformStamped &pose) {
     }
 }
 
-/// 个人修改（2026-10-01）：创建 tf2 监听，用来查询车上已有的 odom→base_link。
-///   说明：TransformListener 默认 spin_thread=true —— 它会把 /tf、/tf_static 的订阅放进
-///   一个【独立的 callback group + 独立线程】里 spin（automatically_add_to_executor_with_node=false），
-///   因此不会干扰本工程主节点那句单线程 spin(node_)，也不需要在别处再 spin 一次。
-///   Buffer 传入 node_ 是为了支持带超时的查询（内部定时器）与 view_frames 调试服务。
+// 个人修改（2026-10-01）：创建 tf2 监听，用来查询车上已有的 odom→base_link。
+//   说明：TransformListener 默认 spin_thread=true —— 它会把 /tf、/tf_static 的订阅放进
+//   一个【独立的 callback group + 独立线程】里 spin（automatically_add_to_executor_with_node=false），
+//   因此不会干扰本工程主节点那句单线程 spin(node_)，也不需要在别处再 spin 一次。
+//   Buffer 传入 node_ 是为了支持带超时的查询（内部定时器）与 view_frames 调试服务。
 void LocSystem::StartTfListener() {
-    /// 缓存时间用 tf2 默认的 10 s；把 node_ 也传进去，这样带超时的查询（内部定时器）才可用
+    // 缓存时间用 tf2 默认的 10 s；把 node_ 也传进去，这样带超时的查询（内部定时器）才可用
     tf_buffer_ = std::make_shared<tf2_ros::Buffer>(node_->get_clock(),
                                                    tf2::Duration(tf2::BUFFER_CORE_DEFAULT_CACHE_TIME), node_);
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_, node_);
@@ -486,23 +486,23 @@ void LocSystem::StartTfListener() {
               << tf_options_.base_frame_id_ << "（中间帧如 base_footprint 会自动串联）";
 }
 
-/// ---------------------------------------------------------------------------
-/// 个人修改（2026-10-01）：栅格地图话题发布（system.publish_map.*）
-///
-///  目的：在线定位进程 run_loc_online 把【已保存的栅格地图】以 nav_msgs/OccupancyGrid
-///        按固定间隔【持续】发布给下游规划/控制（默认话题 /localization/map，默认 1 s），
-///        下游订阅话题即可，不必自己解析 map.pgm。
-///
-///  为什么放在定位端：车运行时下游一直需要这张地图，而定位进程是长期运行的；
-///        建图进程 run_slam_online 只在建图期间存在，故【建图端不发布】话题，
-///        统一由定位端发 —— 发的就是定位正在用的那张 map.pgm / map.yaml（同源）。
-///
-///  数据源：<map_dir>/map.pgm + map.yaml（map_server 格式，即建图端保存出的那份）。
-///        按文件 mtime 判断更新：运行中若重新保存了地图，会自动重载并改发新图，无需重启。
-///
-///  实现要点：用【独立线程】而不是 rclcpp timer —— 构造一帧消息要遍历整张栅格表
-///            （百万格量级），放在 spin 线程里会挡住 IMU/点云回调，导致定位掉帧。
-/// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// 个人修改（2026-10-01）：栅格地图话题发布（system.publish_map.*）
+//
+//  目的：在线定位进程 run_loc_online 把【已保存的栅格地图】以 nav_msgs/OccupancyGrid
+//        按固定间隔【持续】发布给下游规划/控制（默认话题 /localization/map，默认 1 s），
+//        下游订阅话题即可，不必自己解析 map.pgm。
+//
+//  为什么放在定位端：车运行时下游一直需要这张地图，而定位进程是长期运行的；
+//        建图进程 run_slam_online 只在建图期间存在，故【建图端不发布】话题，
+//        统一由定位端发 —— 发的就是定位正在用的那张 map.pgm / map.yaml（同源）。
+//
+//  数据源：<map_dir>/map.pgm + map.yaml（map_server 格式，即建图端保存出的那份）。
+//        按文件 mtime 判断更新：运行中若重新保存了地图，会自动重载并改发新图，无需重启。
+//
+//  实现要点：用【独立线程】而不是 rclcpp timer —— 构造一帧消息要遍历整张栅格表
+//            （百万格量级），放在 spin 线程里会挡住 IMU/点云回调，导致定位掉帧。
+// ---------------------------------------------------------------------------
 void LocSystem::MapPublishLoop() {
     LOG(INFO) << "[map pub] 栅格地图发布线程启动: topic = " << map_pub_options_.topic_
               << ", interval = " << map_pub_options_.interval_ << " s, map_dir = " << ResolveMapDir();
@@ -536,7 +536,7 @@ void LocSystem::MapPublishLoop() {
                 warned_missing = false;
 
                 if (cache_valid && mtime == cached_mtime) {
-                    /// 地图文件没变化：直接发缓存（省掉每秒一遍 1 MB 级别的读盘+解析）
+                    // 地图文件没变化：直接发缓存（省掉每秒一遍 1 MB 级别的读盘+解析）
                     msg = cached_msg;
                     ok = true;
                 } else {
@@ -555,13 +555,13 @@ void LocSystem::MapPublishLoop() {
             }
 
             if (ok) {
-                /// 时间戳取"发布时刻"（下游据此判断地图的新鲜度）
+                // 时间戳取"发布时刻"（下游据此判断地图的新鲜度）
                 msg.header.stamp = node_->now();
                 map_pub_->publish(msg);
             }
         }
 
-        /// 分片睡眠：既保持"每 interval 秒一帧"，又让 Ctrl-C 的退出请求能在 50 ms 内被响应
+        // 分片睡眠：既保持"每 interval 秒一帧"，又让 Ctrl-C 的退出请求能在 50 ms 内被响应
         const double elapsed =
             std::chrono::duration<double>(std::chrono::steady_clock::now() - tick_begin).count();
         double rest = map_pub_options_.interval_ - elapsed;
@@ -575,15 +575,15 @@ void LocSystem::MapPublishLoop() {
     LOG(INFO) << "[map pub] 栅格地图发布线程退出";
 }
 
-/// 读取已保存的 map.pgm + map.yaml（ROS map_server 格式）并拼成一帧 OccupancyGrid。
-///
-///  坐标系/行序约定（与 slam.cc:SaveMap 写图时【严格互逆】，改一处必须同步改另一处）：
-///    · map.yaml 的 resolution/origin/width/height 直接作为 OccupancyGrid 的元数据；
-///      其中 origin 是"地图左下角(即 data[0])在世界系下的坐标"；
-///    · 图像第 0 行是【地图顶部】(y 最大)，而 OccupancyGrid 的 data 从【左下角】开始按行排，
-///      所以这里读图时用 (height - 1 - y) 行 —— 对应 SaveMap 里写图时的 (height - 1 - y)；
-///    · 像素→占据概率（negate=0 的 map_server 语义）：occ = (255 - v) / 255，
-///      occ > occupied_thresh ⇒ 100(占据)，occ < free_thresh ⇒ 0(空闲)，其余 ⇒ -1(未知)。
+// 读取已保存的 map.pgm + map.yaml（ROS map_server 格式）并拼成一帧 OccupancyGrid。
+//
+//  坐标系/行序约定（与 slam.cc:SaveMap 写图时【严格互逆】，改一处必须同步改另一处）：
+//    · map.yaml 的 resolution/origin/width/height 直接作为 OccupancyGrid 的元数据；
+//      其中 origin 是"地图左下角(即 data[0])在世界系下的坐标"；
+//    · 图像第 0 行是【地图顶部】(y 最大)，而 OccupancyGrid 的 data 从【左下角】开始按行排，
+//      所以这里读图时用 (height - 1 - y) 行 —— 对应 SaveMap 里写图时的 (height - 1 - y)；
+//    · 像素→占据概率（negate=0 的 map_server 语义）：occ = (255 - v) / 255，
+//      occ > occupied_thresh ⇒ 100(占据)，occ < free_thresh ⇒ 0(空闲)，其余 ⇒ -1(未知)。
 bool LocSystem::LoadGridMsg(const std::string& pgm_path, const std::string& yaml_path,
                             nav_msgs::msg::OccupancyGrid& msg) {
     const cv::Mat img = cv::imread(pgm_path, cv::IMREAD_GRAYSCALE);
@@ -592,7 +592,7 @@ bool LocSystem::LoadGridMsg(const std::string& pgm_path, const std::string& yaml
         return false;
     }
 
-    /// 元数据以同名 map.yaml 为准；文件损坏/缺字段时退回默认值（不因此中断发布）
+    // 元数据以同名 map.yaml 为准；文件损坏/缺字段时退回默认值（不因此中断发布）
     double resolution = 0.05;
     double origin_x = 0.0, origin_y = 0.0;
     double occupied_thresh = 0.65, free_thresh = 0.25;
@@ -660,20 +660,20 @@ bool LocSystem::LoadGridMsg(const std::string& pgm_path, const std::string& yaml
     return true;
 }
 
-/// 栅格地图目录：配置了 system.publish_map.path 就用它，否则用 yaml 的 system.map_path
-///   （定位端的地图目录，里面就是建图保存出的 map.pgm / map.yaml / global.pcd）
+// 栅格地图目录：配置了 system.publish_map.path 就用它，否则用 yaml 的 system.map_path
+//   （定位端的地图目录，里面就是建图保存出的 map.pgm / map.yaml / global.pcd）
 std::string LocSystem::ResolveMapDir() const {
     std::string dir = map_pub_options_.path_;
     if (dir.empty()) {
         dir = map_dir_;
     }
 
-    /// 都没配时退回本工程默认地图目录，并在日志里能看出来是从哪来的
+    // 都没配时退回本工程默认地图目录，并在日志里能看出来是从哪来的
     if (dir.empty()) {
         dir = "./data/new_map/";
     }
 
-    /// 去掉结尾多余的 '/'，避免拼出 "...//map.pgm"（filesystem 能处理，但日志和报错不好看）
+    // 去掉结尾多余的 '/'，避免拼出 "...//map.pgm"（filesystem 能处理，但日志和报错不好看）
     while (dir.size() > 1 && dir.back() == '/') {
         dir.pop_back();
     }

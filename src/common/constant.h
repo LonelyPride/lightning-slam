@@ -9,7 +9,7 @@
 
 namespace lightning::constant {
 
-/// 各类常量定义
+// 各类常量定义
 constexpr double kDEG2RAD = 0.017453292519943;   // deg -> rad
 constexpr double kRAD2DEG = 57.295779513082323;  // rad -> deg
 constexpr double kPI = M_PI;                     // pi

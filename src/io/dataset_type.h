@@ -41,7 +41,7 @@ inline DatasetType Str2DatasetType(const std::string& name) {
 
     return DatasetType::UNKNOWN;
 }
-/// 各种数据集里用的topic名称
+// 各种数据集里用的topic名称
 const std::string nclt_rtk_topic = "gps_rtk_fix";
 
 const std::string nclt_lidar_topic = "points_raw";

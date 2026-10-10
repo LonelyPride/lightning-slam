@@ -56,28 +56,28 @@ class SlamSystem {
     SlamSystem(Options options);
     ~SlamSystem();
 
-    /// 初始化
+    // 初始化
     bool Init(const std::string& yaml_path);
 
-    /// 对外部交互接口
-    /// 开始建图，输入地图名称
+    // 对外部交互接口
+    // 开始建图，输入地图名称
     void StartSLAM(std::string map_name);
 
-    /// 保存地图，默认保存至./data/地图名/ 下方
+    // 保存地图，默认保存至./data/地图名/ 下方
     void SaveMap(const std::string& path = "");
 
-    /// 处理IMU
+    // 处理IMU
     void ProcessIMU(const lightning::IMUPtr& imu);
 
-    /// 处理点云
+    // 处理点云
     void ProcessLidar(const sensor_msgs::msg::PointCloud2::SharedPtr& cloud);
     void ProcessLidar(const livox_ros_driver2::msg::CustomMsg::SharedPtr& cloud);
 
-    /// 实时模式下的spin
+    // 实时模式下的spin
     void Spin();
 
    private:
-    /// ros端保存地图的实现
+    // ros端保存地图的实现
     void SaveMap(const SaveMapService::Request::SharedPtr request, SaveMapService::Response::SharedPtr response);
 
     Options options_;
@@ -94,7 +94,7 @@ class SlamSystem {
 
     Keyframe::Ptr cur_kf_ = nullptr;
 
-    /// 实时模式下的ros2 node, subscribers
+    // 实时模式下的ros2 node, subscribers
     rclcpp::Node::SharedPtr node_;
     std::string imu_topic_;
     std::string cloud_topic_;

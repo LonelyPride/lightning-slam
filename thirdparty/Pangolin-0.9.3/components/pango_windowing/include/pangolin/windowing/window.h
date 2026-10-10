@@ -94,31 +94,31 @@ class PANGOLIN_EXPORT WindowInterface
 public:
     virtual ~WindowInterface() {}
 
-    /// Move window to (\param x, \param y) on screen
-    /// measured in pixels.
+    // Move window to (\param x, \param y) on screen
+    // measured in pixels.
     virtual void Move(int x, int y) = 0;
 
-    /// Resize window to (\param x, \param y) on screen
-    /// measured in pixels
+    // Resize window to (\param x, \param y) on screen
+    // measured in pixels
     virtual void Resize(unsigned int w, unsigned int h) = 0;
 
-    /// If supported by this windowing system, turn on,
-    /// turn off, or toggle fullscreen mode.
+    // If supported by this windowing system, turn on,
+    // turn off, or toggle fullscreen mode.
     virtual void ShowFullscreen(const TrueFalseToggle on_off) = 0;
 
-    /// Make this the active context for graphic rendering.
+    // Make this the active context for graphic rendering.
     virtual void MakeCurrent() = 0;
 
-    /// Unregister this context from being the active rendering context.
+    // Unregister this context from being the active rendering context.
     virtual void RemoveCurrent() = 0;
 
-    /// Process all windowing events to keep window alive
-    /// and emit interaction callbacks (e.g. mouse, keyboard, resize)
+    // Process all windowing events to keep window alive
+    // and emit interaction callbacks (e.g. mouse, keyboard, resize)
     virtual void ProcessEvents() = 0;
 
-    /// If double-buffered rendering is enabled, swap the
-    /// front and back buffers revealing the recent renders
-    /// to the back buffer.
+    // If double-buffered rendering is enabled, swap the
+    // front and back buffers revealing the recent renders
+    // to the back buffer.
     virtual void SwapBuffers() = 0;
 
     sigslot::signal<>                    CloseSignal;

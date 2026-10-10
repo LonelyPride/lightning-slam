@@ -54,11 +54,11 @@ void PGO::PubResult() {
 
         bool extrap_success = true;
 
-        /// 利用激光定位的外推结果校验DR外推
+        // 利用激光定位的外推结果校验DR外推
         if (impl_->lidar_loc_pose_queue_.size() > 5 && impl_->result_.lidar_loc_smooth_flag_ &&
             (result.timestamp_ - impl_->lidar_loc_pose_queue_.back().timestamp_) < 0.3) {
             SE3 recent_lidar_loc_pose = impl_->lidar_loc_pose_queue_.back().pose_;
-            /// 要求激光pose队列有效，且激光定位自身满足平滑性要求
+            // 要求激光pose队列有效，且激光定位自身满足平滑性要求
 
             SE3 lidar_loc_extrap_pose;  // 外推之后的激光定位位姿
             TimedPose best_match;
@@ -67,9 +67,9 @@ void PGO::PubResult() {
                 [](const TimedPose& tp) { return tp.pose_; }, lidar_loc_extrap_pose, best_match, 1.0);
 
             if (interp_succ) {
-                /// 检查激光定位外推结果与DR外推的差异
+                // 检查激光定位外推结果与DR外推的差异
 
-                /// 条件1. 从激光定位指向外推结果的矢量方向 不应该与激光定位自身外推方向相差太多
+                // 条件1. 从激光定位指向外推结果的矢量方向 不应该与激光定位自身外推方向相差太多
                 // Vec3d v1 = result.pose_.translation() - recent_lidar_loc_pose.translation();
                 // Vec3d v2 = lidar_loc_extrap_pose.translation() - recent_lidar_loc_pose.translation();
                 // if (v1.norm() > 0.1 && v2.norm() > 0.1) {
@@ -77,7 +77,7 @@ void PGO::PubResult() {
                 //     v2.normalize();
                 //     const double theta_th = std::cos(15 * M_PI / 180.0);  // 角度阈值
                 //     if (v1.dot(v2) <= theta_th) {
-                //         /// 外推检查不通过
+                //         // 外推检查不通过
                 //         LOG(WARNING) << "外推检查不通过：" << result.pose_.translation().transpose() << ", "
                 //                      << lidar_loc_extrap_pose.translation().transpose() << ", dv: " << v1.dot(v2);
                 //         extrap_success = false;
@@ -88,7 +88,7 @@ void PGO::PubResult() {
                 // SE3 delta = result.pose_.inverse() * lidar_loc_extrap_pose;
                 // if (fabs(delta.translation()[0]) > 0.5 || fabs(delta.translation()[1]) > 0.5 ||
                 //     delta.so3().log().norm() > 2.0 * M_PI / 180.0) {
-                //     /// 外推检查不通过
+                //     // 外推检查不通过
                 //     LOG(WARNING) << "外推检查不通过：" << result.pose_.translation().transpose() << ", "
                 //                  << lidar_loc_extrap_pose.translation().transpose()
                 //                  << ", ang: " << delta.so3().log().norm();
@@ -128,12 +128,12 @@ void PGO::PubResult() {
         //                       " << std::setprecision(12) << result.timestamp_;
 
         if (!extrap_success) {
-            /// 外推失效，那么认为DR queue外推失效，清空DR队列
+            // 外推失效，那么认为DR queue外推失效，清空DR队列
             impl_->dr_pose_queue_.clear();
 
-            /// 同时清空final_output_pose，因为长时间依靠final output可能会导致发散
-            /// 所以当外推失效时，下个时刻就是激光定位+LO的pose。如果LO也失效，那就直接是激光定位的Pose
-            /// final_output_pose_.clear();
+            // 同时清空final_output_pose，因为长时间依靠final output可能会导致发散
+            // 所以当外推失效时，下个时刻就是激光定位+LO的pose。如果LO也失效，那就直接是激光定位的Pose
+            // final_output_pose_.clear();
         }
 
         return;
@@ -142,15 +142,31 @@ void PGO::PubResult() {
 
 bool PGO::ProcessDR(const NavState& dr_result) {
     UL lock(impl_->data_mutex_);
-    /// 假定DR定位是按时间顺序到达的
-    double delta_timestamp = 0;
+    // 假定DR定位是按时间顺序到达的
     if (!impl_->dr_pose_queue_.empty()) {
         const double last_stamp = impl_->dr_pose_queue_.back().timestamp_;
-        delta_timestamp = dr_result.timestamp_ - last_stamp;
-        if (dr_result.timestamp_ < last_stamp) {
-            LOG(WARNING) << "当前DR定位的结果的时间戳应当比上一个时间戳数值大，实际相减得"
-                         << dr_result.timestamp_ - last_stamp;
-            return false;
+        const double delta_timestamp = dr_result.timestamp_ - last_stamp;
+
+        if (delta_timestamp < 0) {
+            // 个人修改（2026-10-09，DR 时间戳回退修复）：实机上"刷这行警告 + 定位卡住/移动不丝滑"的入口就在这里。
+            //   DR 队列必须严格单调（PoseInterp / 外推 / 平滑都依赖它），所以时间戳回退的帧一律不入队；
+            //   但必须区分两种情况，否则"丢弃一帧"会退化成"永久停更"：
+            //   ① 回退量很小（驱动抖动、重复帧）：本帧丢弃即可，日志限频，避免刷屏；
+            //   ② 回退量很大（IMU 驱动重连、设备时钟复位）：队列尾部那条"未来"时间戳已不可信，
+            //      继续丢弃会让后续 DR 永远追不上 ⇒ 高频定位输出彻底停更（车在动、位姿不动）。
+            //      此时清空 DR 队列后重新接入，让定位自行恢复。
+            //   注意：若回退量小却"每次都发生"，根因不在 PGO，而在 DR 时间戳本身——
+            //   见 laser_mapping.cc ProcessIMU()/Run() 里"DR 时间基对齐到 IMU 时标"的修复。
+            if (-delta_timestamp > pgo::PGO_DR_CLOCK_RESET_THD) {
+                LOG(ERROR) << "DR时间戳大幅回退 " << delta_timestamp << "s (上一帧 " << last_stamp
+                           << ")，判定为IMU/时钟复位，清空DR队列后重新接入";
+                impl_->dr_pose_queue_.clear();
+            } else {
+                // LOG_EVERY_N：每 20 次打印一次，并带上累计次数，便于判断是偶发抖动还是持续回退
+                LOG_EVERY_N(WARNING, 20) << "当前DR定位的结果的时间戳应当比上一个时间戳数值大，实际相减得"
+                                         << delta_timestamp << "，丢弃该帧(累计 " << google::COUNTER << " 次)";
+                return false;
+            }
         }
     }
 
@@ -177,7 +193,7 @@ bool PGO::ProcessDR(const NavState& dr_result) {
 
 bool PGO::ProcessLidarOdom(const NavState& lio_result) {
     UL lock(impl_->data_mutex_);
-    /// 假定LidarOdom定位是按时间顺序到达的
+    // 假定LidarOdom定位是按时间顺序到达的
     if (!impl_->lidar_odom_pose_queue_.empty()) {
         const double last_stamp = impl_->lidar_odom_pose_queue_.back().timestamp_;
         if (lio_result.timestamp_ < last_stamp) {
@@ -209,7 +225,7 @@ bool PGO::ProcessLidarOdom(const NavState& lio_result) {
         }
     }
 
-    /// 如果LO的时间比DR更新，则发布LO的递推结果
+    // 如果LO的时间比DR更新，则发布LO的递推结果
     if (!impl_->dr_pose_queue_.empty() && lio_result.timestamp_ >= impl_->dr_pose_queue_.back().timestamp_ &&
         !is_parking_) {
         PubResult();
@@ -281,7 +297,7 @@ bool PGO::ProcessLidarLoc(const LocalizationResult& loc_result) {
         impl_->lidar_odom_valid_ = false;
         impl_->lidar_odom_valid_cnt_ = 10;
     } else {
-        /// 如果Odom有效，也需要累计一段时间
+        // 如果Odom有效，也需要累计一段时间
         if (impl_->lidar_odom_valid_cnt_ > 0) {
             impl_->lidar_odom_valid_cnt_--;
         } else {
@@ -361,7 +377,7 @@ bool PGO::ExtrapolateLocResult(LocalizationResult& output_result) {
     SE3 interp_pose;
     NavState best_match;
 
-    /// 确定外推的最远时间，由DR，GPS，LO中取最大者（因为这几个都可能断流）
+    // 确定外推的最远时间，由DR，GPS，LO中取最大者（因为这几个都可能断流）
     double latest_time = impl_->result_.timestamp_;
     if (!dr_pose_queue.empty() && dr_pose_queue.back().timestamp_ > latest_time) {
         latest_time = dr_pose_queue.back().timestamp_;
@@ -403,7 +419,7 @@ bool PGO::ExtrapolateLocResult(LocalizationResult& output_result) {
     // }
 
     // if (impl_->lidar_odom_conflict_with_dr_ && impl_->lidar_odom_valid_) {
-    //     /// 用LO外推到DR时刻
+    //     // 用LO外推到DR时刻
     //     SE3 interp_pose1, interp_pose2;
     //     bool interp1 = common::math::PoseInterp<NavState>(
     //         latest_time, lo_pose_queue, [](const NavState& nav_state) { return nav_state.timestamp_; },
@@ -424,7 +440,7 @@ bool PGO::ExtrapolateLocResult(LocalizationResult& output_result) {
     if (!dr_pose_queue.empty() && dr_pose_queue.back().timestamp_ > output_result.timestamp_) {
         double dr_extrap_time = dr_pose_queue.back().timestamp_ - output_result.timestamp_;  // DR 递推的时间
 
-        /// NOTE 当LO失效，lidar loc有较大延时，可能需要DR递推较久的时间
+        // NOTE 当LO失效，lidar loc有较大延时，可能需要DR递推较久的时间
 
         double dr_pose_inc_th = 5.0 * dr_extrap_time;  // 允许DR外推的距离
         if (!impl_->lidar_odom_valid_) {
@@ -440,7 +456,7 @@ bool PGO::ExtrapolateLocResult(LocalizationResult& output_result) {
         if (dr_interp_success) {
             SE3 pose_incre = interp_pose.inverse() * dr_pose_queue.back().GetPose();
 
-            /// 限制此处的pose incre大小
+            // 限制此处的pose incre大小
             // if (pose_incre.translation().norm() > dr_pose_inc_th) {
             //     LOG(WARNING) << "pose increment is too large: " << pose_incre.translation().norm()
             //               << ", skip extrapolate, dt=" << dr_extrap_time << ", th: " << dr_pose_inc_th;
@@ -454,7 +470,7 @@ bool PGO::ExtrapolateLocResult(LocalizationResult& output_result) {
     }
 
     if (output_result.timestamp_ < (latest_time - 0.05)) {
-        /// 如果中间失效导致最新定位无法更新，那么用激光定位将其外推至最新位置
+        // 如果中间失效导致最新定位无法更新，那么用激光定位将其外推至最新位置
         SE3 interp_pose_final;
         TimedPose best_match_final;
         if (math::PoseInterp<TimedPose>(

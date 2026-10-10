@@ -34,7 +34,7 @@ bool PangolinWindowImpl::Init() {
     current_scan_.reset(new PointCloudType);  // 重置pcl点云指针
     current_scan_ui_.reset(new ui::UiCloud);  // 重置用于渲染的点云指针
 
-    /// data log
+    // data log
     log_vel_.SetLabels(std::vector<std::string>{"vel_x", "vel_y", "vel_z"});
     log_vel_baselink_.SetLabels(std::vector<std::string>{"baselink_vel_x", "baselink_vel_y", "baselink_vel_z"});
     log_bias_acc_.SetLabels(std::vector<std::string>{"ba_x", "ba_y", "ba_z"});
@@ -126,7 +126,7 @@ bool PangolinWindowImpl::UpdateDynamicMap() {
             continue;
         }
 
-        /// 不存在则创建一个
+        // 不存在则创建一个
         std::shared_ptr<ui::UiCloud> ui_cloud(new ui::UiCloud);
         ui_cloud->SetCustomColor(Vec4f(0.0, 0.2, 1.0, 1.0));
         ui_cloud->SetCloud(cp.second, SE3());
@@ -221,17 +221,17 @@ bool PangolinWindowImpl::UpdateState() {
 }
 
 void PangolinWindowImpl::DrawAll() {
-    /// 地图
+    // 地图
     for (const auto &pc : cloud_map_ui_) {
         pc.second->Render();
     }
 
-    /// 动态地图
+    // 动态地图
     for (const auto &pc : cloud_dyn_ui_) {
         pc.second->Render();
     }
 
-    /// 缓存的scans
+    // 缓存的scans
     for (const auto &s : scans_) {
         s->Render();
     }
@@ -260,7 +260,7 @@ void PangolinWindowImpl::DrawAll() {
         UL lock(mtx_current_scan_);
 
         if (all_keyframes_.size() > 1) {
-            /// 闭环后的轨迹
+            // 闭环后的轨迹
             glLineWidth(5.0);
             glBegin(GL_LINE_STRIP);
             glColor3f(0.5, 0.0, 0.5);
@@ -436,7 +436,7 @@ void PangolinWindowImpl::Render() {
         // Render pointcloud
         RenderClouds();
 
-        /// 处理相机跟随问题
+        // 处理相机跟随问题
         if (following_loc_) {
             Eigen::Vector3d translation = newest_frontend_pose_.translation();
             Sophus::SE3d newest_frontend_pose_new(Eigen::Quaterniond::Identity(),

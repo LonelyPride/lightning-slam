@@ -93,17 +93,17 @@ class BaseFixedSizedEdge : public BaseEdge<D, E> {
    public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    /// tuple 中第N个元素的type
+    // tuple 中第N个元素的type
     template <int N, typename... Types>
     using NthType = typename std::tuple_element<N, std::tuple<Types...>>::type;
 
     //! The type of the N-th vertex
-    /// 第N个顶点的type
+    // 第N个顶点的type
     template <int VertexN>
     using VertexXnType = NthType<VertexN, VertexTypes...>;
 
     //! Size of the N-th vertex at compile time
-    /// 第N个顶点的维度
+    // 第N个顶点的维度
     template <int VertexN>
     static constexpr int VertexDimension() {
         return VertexXnType<VertexN>::Dimension;
@@ -197,7 +197,7 @@ class BaseFixedSizedEdge : public BaseEdge<D, E> {
      */
     void ConstructQuadraticForm() override;
 
-    /// 拷贝hessian至solver
+    // 拷贝hessian至solver
     void CopyHessianToSolver() override;
 
     template <int N>
@@ -212,7 +212,7 @@ class BaseFixedSizedEdge : public BaseEdge<D, E> {
     template <int N, int M>
     void CopyEdgeHessianM();
 
-    /// 主对角线部分
+    // 主对角线部分
     template <std::size_t... Ints>
     void ConstructQuadraticFormNs(const InformationType &omega, const ErrorVector &weightedError,
                                   std::index_sequence<Ints...>);
@@ -220,7 +220,7 @@ class BaseFixedSizedEdge : public BaseEdge<D, E> {
     template <int N>
     void ConstructQuadraticFormN(const InformationType &omega, const ErrorVector &weightedError);
 
-    /// 非主对角线部分
+    // 非主对角线部分
     template <int N, std::size_t... Ints, typename AtOType>
     void ConstructOffDiagonalQuadraticFormMs(const AtOType &AtO, std::index_sequence<Ints...>);
 

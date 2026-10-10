@@ -84,7 +84,7 @@ void Optimizer::InitFromRaw(int level) {
 }
 
 void Optimizer::InitFromLast(int level) {
-    /// 检查所有顶点都不应该有marg的部分
+    // 检查所有顶点都不应该有marg的部分
     for (const auto &v : vertices_) {
         if (v.second->Marginalized()) {
             LOG(ERROR) << "should not use marginalization in incremental mode. ";
@@ -156,7 +156,7 @@ int Optimizer::Optimize(int iterations) {
     if (iv_map_.empty()) {
         LOG(WARNING) << "0 vertices to Optimize, maybe forgot to call "
                         "InitializeOptimization()";
-        /// NOTE: 这个可以帮忙调，不用每次让用户调
+        // NOTE: 这个可以帮忙调，不用每次让用户调
         return -1;
     }
 
@@ -315,7 +315,7 @@ bool Optimizer::AddVertex(std::shared_ptr<Vertex> v) {
                 LOG(INFO) << "replacing new vertex " << v->GetId() << " with old " << v_remove->GetId();
             }
 
-            /// 先remove active edges
+            // 先remove active edges
             auto edges_to_remove = v_remove->GetEdges();
             std::set<Edge *> er_set;
             for (auto &e : edges_to_remove) {

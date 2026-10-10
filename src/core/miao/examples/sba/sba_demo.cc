@@ -226,7 +226,7 @@ int main(int argc, char** argv) {
         int num_obs = 0;
 
         for (size_t j = 0; j < true_poses.size(); ++j) {
-            /// 计算是否落在相机范围内
+            // 计算是否落在相机范围内
             Vec3d z;
             std::dynamic_pointer_cast<VertexSCam>(optimizer.GetVertex(j))->mapPoint(z, true_points.at(i));
 

@@ -3,7 +3,7 @@
 namespace pangolin {
 
 const std::string default_model_shader = R"Shader(
-/////////////////////////////////////////
+////////////////////////////
 @start vertex
 #version 120
 
@@ -50,7 +50,7 @@ const std::string default_model_shader = R"Shader(
         gl_Position = KT_cw * vec4(vertex, 1.0);
     }
 
-/////////////////////////////////////////
+////////////////////////////
 @start fragment
 #version 120
 #expect SHOW_COLOR
@@ -94,7 +94,7 @@ void main() {
 )Shader";
 
 const std::string equi_env_shader = R"Shader(
-/////////////////////////////////////////
+////////////////////////////
 @start vertex
 #version 120
 attribute vec2 vertex;

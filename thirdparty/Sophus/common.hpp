@@ -1,5 +1,5 @@
-/// @file
-/// Common functionality.
+// @file
+// Common functionality.
 
 #ifndef SOPHUS_COMMON_HPP
 #define SOPHUS_COMMON_HPP
@@ -133,18 +133,18 @@ struct Constants<float> {
   }
 };
 
-/// Nullopt type of lightweight optional class.
+// Nullopt type of lightweight optional class.
 struct nullopt_t {
   explicit constexpr nullopt_t() {}
 };
 
 constexpr nullopt_t nullopt{};
 
-/// Lightweight optional implementation which requires ``T`` to have a
-/// default constructor.
-///
-/// TODO: Replace with std::optional once Sophus moves to c++17.
-///
+// Lightweight optional implementation which requires ``T`` to have a
+// default constructor.
+//
+// TODO: Replace with std::optional once Sophus moves to c++17.
+//
 template <class T>
 class optional {
  public:

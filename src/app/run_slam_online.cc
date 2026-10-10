@@ -12,7 +12,7 @@
 
 DEFINE_string(config, "./config/default.yaml", "配置文件");
 
-/// 运行一个LIO前端，带可视化
+// 运行一个LIO前端，带可视化
 int main(int argc, char** argv) {
     google::InitGoogleLogging(argv[0]);
     FLAGS_colorlogtostderr = true;
@@ -21,7 +21,7 @@ int main(int argc, char** argv) {
 
     using namespace lightning;
 
-    /// 需要rclcpp::init
+    // 需要rclcpp::init
     rclcpp::init(argc, argv);
 
     SlamSystem::Options options;

@@ -13,12 +13,12 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-/// 配置参数
+// 配置参数
 namespace lightning {
 
 namespace debug {
 
-/// debug and save
+// debug and save
 extern bool flg_exit;     // ctrl-c中断
 extern bool flg_pause;    // 暂停
 extern bool flg_next;     // 暂停后，放行单个消息(单步调试)
@@ -44,13 +44,13 @@ extern double pose2d_pitch_limit;           // 当前帧触发2d roll角度阈�
 extern double pose2d_relative_z_limit;      // 当前帧触发2d 相邻帧z值波动阈值
 }  // namespace lo
 
-/// 地图配置
+// 地图配置
 namespace map {
 extern std::string map_path;  // 地图路径
 extern Vec3d map_origin;      // 地图原点
 }  // namespace map
 
-/// PGO 配置
+// PGO 配置
 namespace pgo {
 
 constexpr int PGO_MAX_FRAMES = 5;                               // PGO所持的最大帧数
@@ -59,8 +59,13 @@ constexpr int PGO_MAX_SIZE_OF_RTK_POSE_QUEUE = 200;             // PGO RTK观测
 constexpr double PGO_DISTANCE_TH_LAST_FRAMES = 2.5;             // PGO 滑窗时，最近两帧的最小距离
 constexpr double PGO_ANGLE_TH_LAST_FRAMES = 10 * M_PI / 360.0;  // PGO 滑窗时，最近两帧的最小角度
 
-/// 噪声参数
-/// 宁松勿紧避矛盾
+// 个人修改（2026-10-09，DR 时间戳回退修复）：DR 时间戳单次回退量超过该值时，判为 IMU/驱动时钟复位
+//   （driver 重连、设备重新上电等），此时清空 DR 队列后重新接入，避免"永久丢弃新数据 ⇒ 定位停更"。
+//   小于该值的回退按"抖动/重复帧"处理：只丢弃这一帧并限频告警。
+constexpr double PGO_DR_CLOCK_RESET_THD = 0.5;  // DR 时间戳回退判定为时钟复位的阈值 s
+
+// 噪声参数
+// 宁松勿紧避矛盾
 extern double lidar_loc_pos_noise;        // lidar定位位置噪声
 extern double lidar_loc_ang_noise;        // lidar定位角度噪声
 extern double lidar_loc_outlier_th;       // lidar定位异常阈值
@@ -87,15 +92,15 @@ extern int grid_search_angle_step;      // 角度网格搜索步数（关键参�
 extern double grid_search_angle_range;  // 角度搜索半径(角度制，关键参数,左右各有)
 }  // namespace lidar_loc
 
-/// fasterlio 配置
+// fasterlio 配置
 namespace fasterlio {
 
-/// fixed params
+// fixed params
 constexpr double INIT_TIME = 0.1;
 constexpr int NUM_MATCH_POINTS = 5;      // required matched points in current
 constexpr int MIN_NUM_MATCH_POINTS = 3;  // minimum matched points in current
 
-/// configurable params
+// configurable params
 extern int NUM_MAX_ITERATIONS;      // max iterations of ekf
 extern float ESTI_PLANE_THRESHOLD;  // plane threshold
 }  // namespace fasterlio

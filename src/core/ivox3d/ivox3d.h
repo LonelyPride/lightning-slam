@@ -20,7 +20,7 @@ enum class IVoxNodeType {
     PHC,      // phc ivox
 };
 
-/// traits for NodeType
+// traits for NodeType
 template <IVoxNodeType node_type, typename PointT, int dim>
 struct IVoxNodeTypeTraits {};
 
@@ -72,29 +72,29 @@ class IVox {
      */
     void AddPoints(const PointVector& points_to_add);
 
-    /// get nn
+    // get nn
     bool GetClosestPoint(const PointType& pt, PointType& closest_pt);
 
-    /// get nn with condition
+    // get nn with condition
     bool GetClosestPoint(const PointType& pt, PointVector& closest_pt, int max_num = 5, double max_range = 5.0);
 
-    /// get nn in cloud
+    // get nn in cloud
     bool GetClosestPoint(const PointVector& cloud, PointVector& closest_cloud);
 
-    /// get number of points
+    // get number of points
     size_t NumPoints() const;
 
-    /// get number of valid grids
+    // get number of valid grids
     size_t NumValidGrids() const;
 
-    /// get statistics of the points
+    // get statistics of the points
     std::vector<float> StatGridPoints() const;
 
    private:
-    /// generate the nearby grids according to the given options
+    // generate the nearby grids according to the given options
     void GenerateNearbyGrids();
 
-    /// position to grid
+    // position to grid
     KeyType Pos2Grid(const PtType& pt) const;
 
     Options options_;

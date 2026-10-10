@@ -13,7 +13,7 @@
 
 namespace lightning {
 
-/// 同步获取的消息
+// 同步获取的消息
 struct MeasureGroup {
     double timestamp_ = 0;  // scan的开始时间
     double lidar_begin_time_ = 0;

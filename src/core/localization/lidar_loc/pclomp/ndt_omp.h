@@ -186,7 +186,7 @@ class NormalDistributionsTransform : public pcl::Registration<PointSource, Point
   // lower is better
   double calculateScore(const PointCloudSource &cloud) const;
 
-  /// added by xiang
+  // added by xiang
   /**
    * 增加一个目标点云
    * @param target

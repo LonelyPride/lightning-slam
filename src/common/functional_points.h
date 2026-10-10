@@ -7,7 +7,7 @@
 
 namespace lightning {
 
-/// 功能点定义
+// 功能点定义
 struct FunctionalPoint {
     FunctionalPoint() {}
     FunctionalPoint(const std::string& name, const SE3& pose) : name_(name), pose_(pose) {}

@@ -104,7 +104,7 @@ struct GlFormatTraits<double>
 
 #ifdef HAVE_EIGEN
 
-//////////////////////////////////////////////////////////////////
+////////////////////////////////////////////
 
 template <>
 struct GlFormatTraits<Eigen::Matrix<unsigned char,2,1>>
@@ -151,7 +151,7 @@ struct GlFormatTraits<Eigen::Vector2d>
     static const size_t components = 2;
 };
 
-//////////////////////////////////////////////////////////////////
+////////////////////////////////////////////
 
 template <>
 struct GlFormatTraits<Eigen::Matrix<unsigned char,3,1>>
@@ -189,7 +189,7 @@ struct GlFormatTraits<Eigen::Vector3d>
     static const size_t components = 3;
 };
 
-//////////////////////////////////////////////////////////////////
+////////////////////////////////////////////
 
 template <>
 struct GlFormatTraits<Eigen::Matrix<unsigned char,4,1>>

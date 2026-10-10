@@ -32,9 +32,9 @@
 namespace pangolin
 {
 
-////////////////////////////////////////////////
+////////////////////////////////
 // Interface
-////////////////////////////////////////////////
+////////////////////////////////
 
 void MakeTriangleStripIboForVbo(GlBuffer& ibo, int w, int h);
 
@@ -54,9 +54,9 @@ void RenderVboIboNbo(GlBuffer& vbo, GlBuffer& ibo, GlBuffer& nbo, bool draw_mesh
 
 void RenderVboIboCboNbo(GlBuffer& vbo, GlBuffer& ibo, GlBuffer& cbo, GlBuffer& nbo, bool draw_mesh = true, bool draw_color = true, bool draw_normals = true);
 
-////////////////////////////////////////////////
+////////////////////////////////
 // Implementation
-////////////////////////////////////////////////
+////////////////////////////////
 
 inline void MakeTriangleStripIboForVbo(GlBuffer& ibo, int w, int h)
 {

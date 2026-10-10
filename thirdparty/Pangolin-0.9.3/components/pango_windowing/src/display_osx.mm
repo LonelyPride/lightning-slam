@@ -64,7 +64,7 @@ namespace pangolin
 OsxWindow::OsxWindow(
     const std::string& title, int width, int height, bool USE_RETINA, NSOpenGLPixelFormatAttribute gl_profile
 ) {
-    ///////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////
     // Make sure Application is initialised correctly.
     // This can be run repeatedly.
 
@@ -77,7 +77,7 @@ OsxWindow::OsxWindow(
     [PangolinNSApplication run_pre];
     [PangolinNSApplication run_step];
 
-    ///////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////
     // Create Window
 
     NSRect viewRect = NSMakeRect( 0.0, 0.0, width, height );
@@ -92,7 +92,7 @@ OsxWindow::OsxWindow(
     [_window setDelegate:windelegate];
     windelegate->osx_window = this;
 
-    ///////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////
     // Create OpenGL View for Window
 
     NSOpenGLPixelFormatAttribute attrs[] =

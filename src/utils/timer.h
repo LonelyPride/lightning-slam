@@ -14,7 +14,7 @@
 
 namespace lightning {
 
-/// 统计时间工具
+// 统计时间工具
 class Timer {
    public:
     struct TimerRecord {
@@ -54,16 +54,16 @@ class Timer {
         }
     }
 
-    /// 打印记录的所有耗时
+    // 打印记录的所有耗时
     static void PrintAll();
 
-    /// 写入文件，方便作图分析
+    // 写入文件，方便作图分析
     static void DumpIntoFile(const std::string& file_name);
 
-    /// 获取某个函数的平均执行时间
+    // 获取某个函数的平均执行时间
     static double GetMeanTime(const std::string& func_name);
 
-    /// 清理记录
+    // 清理记录
     static void Clear() { records_.clear(); }
 
    private:

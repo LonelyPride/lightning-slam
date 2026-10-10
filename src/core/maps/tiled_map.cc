@@ -41,7 +41,7 @@ void TiledMap::SaveToBin(bool only_dynamic) {
     LOG(INFO) << "map is saved to " << options_.map_path_ << ", sz: " << static_chunks_.size();
 
     if (!only_dynamic) {
-        /// 原点+索引
+        // 原点+索引
         std::ofstream fout(options_.map_path_ + "/index.txt");
         fout << std::setprecision(18) << origin_[0] << " " << origin_[1] << " " << origin_[2] << std::endl;
 
@@ -56,7 +56,7 @@ void TiledMap::SaveToBin(bool only_dynamic) {
             fout << cp.second->id_ << " " << cp.first[0] << " " << cp.first[1] << " " << filename << std::endl;
         }
 
-        /// functional points
+        // functional points
         fout << "# functional points" << std::endl;
         for (const auto& fp : func_points_) {
             auto t = fp.pose_.translation();
@@ -69,8 +69,8 @@ void TiledMap::SaveToBin(bool only_dynamic) {
     }
 
     for (auto& cp : dynamic_chunks_) {
-        /// 只存储动态图层
-        /// 如果同一栅格还存在动态图层，应该把动态图层也存下来
+        // 只存储动态图层
+        // 如果同一栅格还存在动态图层，应该把动态图层也存下来
         if (cp.second->cloud_ != nullptr && !cp.second->cloud_->empty()) {
             std::string filename = options_.map_path_ + "/" + std::to_string(cp.second->id_) + "_dyn.pcd";
             cp.second->cloud_->width = cp.second->cloud_->size();
@@ -120,7 +120,7 @@ bool TiledMap::LoadMapIndex() {
         }
 
         if (reading_fp) {
-            /// 读功能点
+            // 读功能点
             std::string name;
             double data[7];
             ss >> name;
@@ -131,7 +131,7 @@ bool TiledMap::LoadMapIndex() {
             func_points_.emplace_back(name,
                                       SE3(Quatd(data[6], data[3], data[4], data[5]), Vec3d(data[0], data[1], data[2])));
         } else {
-            /// 读地图区块
+            // 读地图区块
             int id;
             Vec2i grid;
             std::string path;
@@ -159,7 +159,7 @@ bool TiledMap::LoadMapIndex() {
                     dynamic_chunks_.emplace(grid, dyn_chunk);
 
                     if (options_.load_dyn_cloud_) {
-                        /// 从硬盘中读点云
+                        // 从硬盘中读点云
                         dyn_chunk->LoadCloud();
                     }
                 }
@@ -290,7 +290,7 @@ void TiledMap::LoadOnPose(const SE3& pose) {
         int n = abs(d[0]) + abs(d[1]);
         if (n <= options_.load_map_size_) {
             if (loaded_chunks_.find(cp.first) == loaded_chunks_.end()) {
-                /// 载入静态地图
+                // 载入静态地图
                 map_updated_ = true;
                 if (cp.second->cloud_ == nullptr) {
                     cp.second->LoadCloud();  // 载入点云
@@ -307,7 +307,7 @@ void TiledMap::LoadOnPose(const SE3& pose) {
                 dynamic_chunks_.emplace(cp.first, new_chunk);
                 dynamic_map_updated_ = true;
             } else {
-                /// 如果该区块已经被卸载，那么重新读取该区块点云
+                // 如果该区块已经被卸载，那么重新读取该区块点云
                 if (!dyn_iter->second->loaded_) {
                     dyn_iter->second->LoadCloud();
                 }
@@ -324,7 +324,7 @@ void TiledMap::LoadOnPose(const SE3& pose) {
         Vec2i d = g - this_grid;
         int n = abs(d[0]) + abs(d[1]);
         if (n > options_.unload_map_size_) {
-            /// 卸载静态地图
+            // 卸载静态地图
             map_updated_ = true;
             // static_chunks_[g]->Unload();
             iter = loaded_chunks_.erase(iter);
@@ -405,7 +405,7 @@ std::map<int, CloudPtr> TiledMap::GetDynamicCloud() {
     for (auto& idx : loaded_chunks_) {
         if (dynamic_chunks_.find(idx) != dynamic_chunks_.end()) {
             if (dynamic_chunks_[idx]->cloud_ != nullptr) {
-                /// 也可能没有这个块
+                // 也可能没有这个块
                 CloudPtr c(new PointCloudType);
                 *c = *dynamic_chunks_[idx]->cloud_;  // needs deep copy
                 cloud.emplace(dynamic_chunks_[idx]->id_, c);
@@ -451,7 +451,7 @@ void TiledMap::ResetDynamicCloud() {
                 dynamic_chunks_.emplace(grid, dyn_chunk);
 
                 if (options_.load_dyn_cloud_) {
-                    /// 从硬盘中读点云
+                    // 从硬盘中读点云
                     dyn_chunk->LoadCloud();
                     init_dy_size++;
                 }
@@ -482,14 +482,14 @@ void TiledMap::UpdateDynamicCloud(CloudPtr cloud_world, bool remove_old) {
         auto iter_static = static_chunks_.find(grid);
 
         if (iter != dynamic_chunks_.end()) {
-            /// 该区块已经存在，则加入这个区块的点云
+            // 该区块已经存在，则加入这个区块的点云
             if (!iter->second->loaded_) {
                 iter->second->LoadCloud();
                 continue;
             }
 
             if (!remove_old && iter->second->cloud_->size() >= options_.max_pts_in_dyn_chunk_) {
-                /// 若不移除旧区域点，则满了之后也不需要加
+                // 若不移除旧区域点，则满了之后也不需要加
                 continue;
             }
 

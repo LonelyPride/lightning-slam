@@ -117,39 +117,39 @@ bool LinearSolverPCG<MatrixType>::Solve(const SparseBlockMatrix<MatrixType>& A, 
             break;  // done
         }
 
-        /// qk = A pk
+        // qk = A pk
         Mult(A.ColBlockIndices(), pk, q);
 
-        /// alpha =  rk^T pk / (pk^T A pk)
+        // alpha =  rk^T pk / (pk^T A pk)
         double alpha = dn / pk.dot(q);
 
-        /// x_k+1 = x_k + alpha pk
+        // x_k+1 = x_k + alpha pk
         xvec += alpha * pk;
 
         // TODO: reset residual here every 50 iterations
-        /// r_{k+1} = r_k + alpha p_k
+        // r_{k+1} = r_k + alpha p_k
         r -= alpha * q;
 
-        /// s = Lambda pk
+        // s = Lambda pk
         MultDiag(A.ColBlockIndices(), J_, r, s);
 
         double dold = dn;
 
-        /// dn = r_{k+1}^T A p_k
+        // dn = r_{k+1}^T A p_k
         dn = r.dot(s);
 
         if (iteration >= 0.1 * maxIter && dn >= 1.1 * last_dn) {
             break;
         }
 
-        /// beta = r_{k+1}^T A p_k / (pk^T A p_k)
+        // beta = r_{k+1}^T A p_k / (pk^T A p_k)
         double beta = dn / dold;
 
         if (iteration % 50 == 0) {
             beta = 0;
         }
 
-        /// pk+1 = -r_k+1 + beta pk
+        // pk+1 = -r_k+1 + beta pk
         pk = s + beta * pk;
 
         dns.emplace_back(dn);
@@ -191,7 +191,7 @@ void LinearSolverPCG<MatrixType>::Mult(const std::vector<int>& colBlockIndices, 
     // now multiply with the upper triangular block
     // NOTE: 这个维度太小的时候，多线程反而不划算
     if (indices_by_row_.size() >= 200) {
-        /// 上半角部分
+        // 上半角部分
         std::for_each(std::execution::par_unseq, indices_by_row_.begin(), indices_by_row_.end(), [&](const auto& d) {
             const int& destOffset = d.first;
             for (const MatAndIdx& m : d.second) {
@@ -201,7 +201,7 @@ void LinearSolverPCG<MatrixType>::Mult(const std::vector<int>& colBlockIndices, 
             }
         });
 
-        /// 下半角部分
+        // 下半角部分
         std::for_each(std::execution::par_unseq, indices_by_col_.begin(), indices_by_col_.end(), [&](const auto& d) {
             const int& destOffsetT = d.first;
             for (const MatAndIdx& m : d.second) {
@@ -212,7 +212,7 @@ void LinearSolverPCG<MatrixType>::Mult(const std::vector<int>& colBlockIndices, 
         });
 
     } else {
-        /// 串行计算时不需要再区分上下半区
+        // 串行计算时不需要再区分上下半区
         std::for_each(std::execution::seq, indices_by_row_.begin(), indices_by_row_.end(), [&](const auto& d) {
             for (const MatAndIdx& m : d.second) {
                 const int& srcOffset = m.idx_;

@@ -33,15 +33,15 @@ namespace lightning {
 class TiledMap {
    public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    /// 动态区域的处理策略
+    // 动态区域的处理策略
     enum class DynamicCloudPolicy {
-        /// 短时间保留，车辆移出该区域就会清空
+        // 短时间保留，车辆移出该区域就会清空
         SHORT = 0,
 
-        /// 长时间保留在内存，车辆移出区域后仍然保留，但不会存盘并在下次开机时使用
+        // 长时间保留在内存，车辆移出区域后仍然保留，但不会存盘并在下次开机时使用
         LONG,
 
-        /// 更长时间的保留，会存盘，下次运行也会读取，超过一定时间后才会清除
+        // 更长时间的保留，会存盘，下次运行也会读取，超过一定时间后才会清除
         PERSISTENT,
     };
 
@@ -65,7 +65,7 @@ class TiledMap {
         bool save_dyn_when_unload_ = true;  // 卸载时是否保存动态点云
     };
 
-    /// 动态区域的多边形
+    // 动态区域的多边形
     struct DynamicPolygon {
         DynamicPolygon() {}
         DynamicPolygon(int id, const Vec2d& pt) : id_(id) { polygon_.emplace_back(cv::Point2f(pt[0], pt[1])); }
@@ -134,24 +134,24 @@ class TiledMap {
      */
     bool ConvertFromFullPCD(CloudPtr map, const SE3& start_pose, const std::string& map_path = "./data/maps/");
 
-    /// 载入地图索引文件
+    // 载入地图索引文件
     bool LoadMapIndex();
 
-    /// 载入某个位置附近的点云
+    // 载入某个位置附近的点云
     void LoadOnPose(const SE3& pose);
 
-    // /// 载入某个位置附近的点云
+    // // 载入某个位置附近的点云
     // void LoadOnPose(const SE3& pose, bool wndt = true);
 
-    /// 获取当前载入的静态点云（分块形式）
-    /// 现在会调用深拷贝
+    // 获取当前载入的静态点云（分块形式）
+    // 现在会调用深拷贝
     std::map<int, CloudPtr> GetStaticCloud();
 
-    /// 获取当前载入的动态点云（分块形式）
-    /// 现在会调用深拷贝
+    // 获取当前载入的动态点云（分块形式）
+    // 现在会调用深拷贝
     std::map<int, CloudPtr> GetDynamicCloud();
 
-    /// 获取拼接好的地图
+    // 获取拼接好的地图
     CloudPtr GetAllMap();
 
     /**
@@ -161,17 +161,17 @@ class TiledMap {
      */
     void UpdateDynamicCloud(CloudPtr cloud_world, bool remove_old_pts = true);
 
-    /// 重置动态图层
+    // 重置动态图层
     void ResetDynamicCloud();
 
-    /// accessors
-    /// 获取地图原点
+    // accessors
+    // 获取地图原点
     Vec3d GetOrigin() const { return origin_; }
 
-    /// 添加地图功能点
+    // 添加地图功能点
     void AddFP(const FunctionalPoint& fp) { func_points_.emplace_back(fp); }
 
-    /// 获取所有功能点
+    // 获取所有功能点
     std::vector<FunctionalPoint> GetAllFP() const { return func_points_; }
 
     int NumActiveChunks() const { return loaded_chunks_.size(); }
@@ -184,13 +184,13 @@ class TiledMap {
         dynamic_map_updated_ = false;
     }
 
-    /// 更新静态点云地图
+    // 更新静态点云地图
     void AddStaticCloud(CloudPtr cloud);
 
-    /// 更新动态点云地图
+    // 更新动态点云地图
     void AddDynamicCloud(CloudPtr cloud);
 
-    /// 更新体素内部数据, 根据新加入的pts和历史的估计情况来确定自己的估计
+    // 更新体素内部数据, 根据新加入的pts和历史的估计情况来确定自己的估计
     void UpdateVoxel(VoxelData& v, bool flag_first_scan = true);
 
     // 获取静态NDT栅格地图
@@ -204,7 +204,7 @@ class TiledMap {
 
     std::map<int, DynamicPolygon> GetDynamicPolygons() const { return dynamic_polygon_; }
 
-    /// 存储到二进制pcd文件
+    // 存储到二进制pcd文件
     void SaveToBin(bool only_dynamic = false);
 
     template <class T>
@@ -238,7 +238,7 @@ class TiledMap {
         }
     }
 
-    /// 清理地图
+    // 清理地图
     void ClearMap();
 
    private:
@@ -250,7 +250,7 @@ class TiledMap {
     int FallsInDynamicArea(const Vec3f& pt);
 
    private:
-    /// 注意这里有个边长
+    // 注意这里有个边长
     inline Vec2i Pos2Grid(const Vec2f& pt) const {
         Vec2d p = ((pt.cast<double>() * options_.inv_chunk_size_) + Vec2d(0.5, 0.5));
         return Vec2i(floor(p[0]), floor(p[1]));

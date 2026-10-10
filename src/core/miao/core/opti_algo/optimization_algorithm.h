@@ -50,8 +50,8 @@ class OptimizationAlgorithm {
     void SetOptimizer(Optimizer* optimizer);
 
    protected:
-    Optimizer* optimizer_ = nullptr;  ///< the optimizer the Solver is working on
-    std::shared_ptr<Solver> solver_;  ///< Solver
+    Optimizer* optimizer_ = nullptr;  //< the optimizer the Solver is working on
+    std::shared_ptr<Solver> solver_;  //< Solver
 };
 
 }  // namespace lightning::miao

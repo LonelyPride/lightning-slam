@@ -44,7 +44,7 @@ bool Localization::Init(const std::string& yaml_path, const std::string& global_
     YAML_IO yaml(yaml_path);
     options_.with_ui_ = yaml.GetValue<bool>("system", "with_ui");
 
-    /// lidar odom前端
+    // lidar odom前端
     LaserMapping::Options opt_lio;
     opt_lio.is_in_slam_mode_ = false;
 
@@ -70,7 +70,7 @@ bool Localization::Init(const std::string& yaml_path, const std::string& global_
                   << R_lidar_imu;
     }
 
-    /// 激光定位
+    // 激光定位
     LidarLoc::Options lidar_loc_options;
     lidar_loc_options.update_dynamic_cloud_ = yaml.GetValue<bool>("lidar_loc", "update_dynamic_cloud");
     lidar_loc_options.force_2d_ = yaml.GetValue<bool>("lidar_loc", "force_2d");
@@ -93,11 +93,11 @@ bool Localization::Init(const std::string& yaml_path, const std::string& global_
 
     lidar_loc_->Init(yaml_path);
 
-    /// pose graph
+    // pose graph
     pgo_ = std::make_shared<PGO>();
     pgo_->SetDebug(false);
 
-    ///  各模块的异步调用
+    //  各模块的异步调用
     options_.enable_lidar_loc_skip_ = yaml.GetValue<bool>("system", "enable_lidar_loc_skip");
     options_.enable_lidar_loc_rviz_ = yaml.GetValue<bool>("system", "enable_lidar_loc_rviz");
     options_.lidar_loc_skip_num_ = yaml.GetValue<int>("system", "lidar_loc_skip_num");
@@ -123,7 +123,7 @@ bool Localization::Init(const std::string& yaml_path, const std::string& global_
         lidar_loc_proc_cloud_.Start();
     }
 
-    /// TODO: 发布
+    // TODO: 发布
     pgo_->SetHighFrequencyGlobalOutputHandleFunction([this](const LocalizationResult& res) {
         // if (loc_result_.timestamp_ > 0) {
         //             double loc_fps = 1.0 / (res.timestamp_ - loc_result_.timestamp_);
@@ -147,7 +147,7 @@ bool Localization::Init(const std::string& yaml_path, const std::string& global_
         }
     });
 
-    /// 预处理器
+    // 预处理器
     preprocess_.reset(new PointCloudPreprocess());
     preprocess_->Blind() = yaml.GetValue<double>("fasterlio", "blind");
     preprocess_->TimeScale() = yaml.GetValue<double>("fasterlio", "time_scale");
@@ -222,7 +222,7 @@ void Localization::LidarOdomProcCloud(CloudPtr cloud) {
         return;
     }
 
-    /// NOTE: 在NCLT这种数据集中，lio内部是有缓存的，它拿到的点云不一定是最新时刻的点云
+    // NOTE: 在NCLT这种数据集中，lio内部是有缓存的，它拿到的点云不一定是最新时刻的点云
     lio_->ProcessPointCloud2(cloud);
     if (!lio_->Run()) {
         return;
@@ -230,7 +230,7 @@ void Localization::LidarOdomProcCloud(CloudPtr cloud) {
 
     auto lo_state = lio_->GetState();
 
-    /// 个人修改：LO 是 LIO 的【IMU 系】位姿，交给 lidar_loc/PGO 之前先换算成【雷达系】(见 ToLidarFrameState)
+    // 个人修改：LO 是 LIO 的【IMU 系】位姿，交给 lidar_loc/PGO 之前先换算成【雷达系】(见 ToLidarFrameState)
     const NavState lo_state_lidar = ToLidarFrameState(lo_state);
     lidar_loc_->ProcessLO(lo_state_lidar);
     pgo_->ProcessLidarOdom(lo_state_lidar);
@@ -238,14 +238,14 @@ void Localization::LidarOdomProcCloud(CloudPtr cloud) {
     // LOG(INFO) << "LO pose: " << std::setprecision(12) << lo_state.timestamp_ << " "
     //           << lo_state.GetPose().translation().transpose();
 
-    /// 获得lio的关键帧
+    // 获得lio的关键帧
 
     auto scan = lio_->GetProjCloud();
 
     if (options_.loc_on_kf_) {
         auto kf = lio_->GetKeyframe();
         if (kf == lio_kf_) {
-            /// 关键帧未更新，那就只更新IMU状态
+            // 关键帧未更新，那就只更新IMU状态
 
             // auto dr_state = lio_->GetState();
             // lidar_loc_->ProcessDR(dr_state);
@@ -316,17 +316,17 @@ void Localization::ProcessIMUMsg(IMUPtr imu) {
     }
     last_imu_time_ = this_imu_time;
 
-    /// 里程计处理IMU
+    // 里程计处理IMU
     lio_->ProcessIMU(imu);
 
-    /// 这里需要 IMU predict，否则没法process DR了
+    // 这里需要 IMU predict，否则没法process DR了
     auto dr_state = lio_->GetIMUState();
 
     if (!dr_state.pose_is_ok_) {
         return;
     }
 
-    // /// 停车判定
+    // // 停车判定
     // constexpr auto kThVbrbStill = 0.05;  // 0.08;
     // constexpr auto kThOmegaStill = 0.05;
 
@@ -335,14 +335,14 @@ void Localization::ProcessIMUMsg(IMUPtr imu) {
     //     dr_state.SetVel(Vec3d::Zero());
     // }
 
-    /// 如果没有odm, 用lio替代DR
+    // 如果没有odm, 用lio替代DR
 
     // LOG(INFO) << "dr state: " << std::setprecision(12) << dr_state.timestamp_ << " "
     //           << dr_state.GetPose().translation().transpose()
     //           << ", q=" << dr_state.GetPose().unit_quaternion().coeffs().transpose();
 
-    /// 个人修改：DR 同样是 LIO 的【IMU 系】位姿，交给 lidar_loc/PGO 之前先换算成【雷达系】
-    ///   （它们内部要把它与"雷达系绝对位姿"做相对运动递推，见 ToLidarFrameState 的说明）
+    // 个人修改：DR 同样是 LIO 的【IMU 系】位姿，交给 lidar_loc/PGO 之前先换算成【雷达系】
+    //   （它们内部要把它与"雷达系绝对位姿"做相对运动递推，见 ToLidarFrameState 的说明）
     const NavState dr_state_lidar = ToLidarFrameState(dr_state);
     lidar_loc_->ProcessDR(dr_state_lidar);
     pgo_->ProcessDR(dr_state_lidar);
@@ -392,25 +392,25 @@ void Localization::Finish() {
 
 void Localization::SetExternalPose(const Eigen::Quaterniond& q, const Eigen::Vector3d& t) {
     UL lock(global_mutex_);
-    /// 设置外部重定位的pose
-    /// 个人修改（外参补丁配套说明）：这里的位姿语义 = 【雷达系】在地图下的位姿 T_map_lidar，
-    ///   与本模块内部及地图/点云约定一致（run_loc_online 传单位阵 = "车辆在地图起点、雷达系与世界系对齐"）。
-    ///   若外部系统手里是【车辆(base_link)系】位姿，需先换算：
-    ///     T_map_lidar = ToBodyPoseFromLidar(T_map_vehicle, T_imu_lidar)   // vehicle_frame.h:210
-    ///   （或直接调用 SetExternalVehiclePose()，2026-10-01 新增，内部完成同一换算）
+    // 设置外部重定位的pose
+    // 个人修改（外参补丁配套说明）：这里的位姿语义 = 【雷达系】在地图下的位姿 T_map_lidar，
+    //   与本模块内部及地图/点云约定一致（run_loc_online 传单位阵 = "车辆在地图起点、雷达系与世界系对齐"）。
+    //   若外部系统手里是【车辆(base_link)系】位姿，需先换算：
+    //     T_map_lidar = ToBodyPoseFromLidar(T_map_vehicle, T_imu_lidar)   // vehicle_frame.h:210
+    //   （或直接调用 SetExternalVehiclePose()，2026-10-01 新增，内部完成同一换算）
     if (lidar_loc_) {
         lidar_loc_->SetInitialPose(SE3(q, t));
     }
 }
 
 void Localization::SetExternalVehiclePose(const Eigen::Quaterniond& q, const Eigen::Vector3d& t) {
-    /// 个人修改（2026-10-01，手动初始位姿/重定位）：
-    ///   入参 = 【车辆(base_link)系】在地图下的位姿 T_map_vehicle（RViz "2D Pose Estimate" 语义：
-    ///   固定帧(map)下 base_link 的位姿）。内部统一使用【雷达系】位姿 T_map_lidar，两者相差两级外参：
-    ///     T_map_vehicle --ToBodyPose（撤销 IMU→车辆 安装旋转 M = R_vehicle_imu）--> T_map_imu
-    ///                   --ToLidarPose（乘 雷达→IMU 外参 T_imu_lidar_）----------> T_map_lidar
-    ///   不换算的后果：本平台雷达/IMU 竖装，二者姿态差约 90°，种子一歪就会被初始化门槛
-    ///   （lidar_loc.min_init_confidence_）拒掉，表现为"点了 2D Pose Estimate 但定位不跟随"。
+    // 个人修改（2026-10-01，手动初始位姿/重定位）：
+    //   入参 = 【车辆(base_link)系】在地图下的位姿 T_map_vehicle（RViz "2D Pose Estimate" 语义：
+    //   固定帧(map)下 base_link 的位姿）。内部统一使用【雷达系】位姿 T_map_lidar，两者相差两级外参：
+    //     T_map_vehicle --ToBodyPose（撤销 IMU→车辆 安装旋转 M = R_vehicle_imu）--> T_map_imu
+    //                   --ToLidarPose（乘 雷达→IMU 外参 T_imu_lidar_）----------> T_map_lidar
+    //   不换算的后果：本平台雷达/IMU 竖装，二者姿态差约 90°，种子一歪就会被初始化门槛
+    //   （lidar_loc.min_init_confidence_）拒掉，表现为"点了 2D Pose Estimate 但定位不跟随"。
     const SE3 T_map_vehicle(q, t);
     const SE3 T_map_lidar = vehicle_frame::ToLidarPose(vehicle_frame::ToBodyPose(T_map_vehicle), T_imu_lidar_);
 
@@ -419,8 +419,8 @@ void Localization::SetExternalVehiclePose(const Eigen::Quaterniond& q, const Eig
     LOG(INFO) << "[manual init] -> T_map_lidar (after lidar/imu extrinsics): " << T_map_lidar.translation().transpose()
               << ", " << T_map_lidar.unit_quaternion().coeffs().transpose();
 
-    /// 复用既有外部位姿入口：它会锁 global_mutex_ 并调用 lidar_loc_->SetInitialPose()，
-    /// 后者置 loc_inited_ = false ⇒ 下一帧点云即以该位姿为种子重新初始化。
+    // 复用既有外部位姿入口：它会锁 global_mutex_ 并调用 lidar_loc_->SetInitialPose()，
+    // 后者置 loc_inited_ = false ⇒ 下一帧点云即以该位姿为种子重新初始化。
     SetExternalPose(T_map_lidar.unit_quaternion(), T_map_lidar.translation());
 }
 

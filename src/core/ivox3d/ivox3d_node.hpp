@@ -17,7 +17,7 @@ class IVoxNode {
     struct DistPoint;
 
     IVoxNode() = default;
-    IVoxNode(const PointT& center, const float& side_length) {}  /// same with phc
+    IVoxNode(const PointT& center, const float& side_length) {}  // same with phc
 
     void InsertPoint(const PointT& pt);
 

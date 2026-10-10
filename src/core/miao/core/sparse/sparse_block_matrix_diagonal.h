@@ -62,8 +62,8 @@ class SparseBlockMatrixDiagonal {
     }
 
    protected:
-    const std::vector<int>& block_indices_;  ///< vector of the indices of the
-    ///< blocks along the Diagonal
+    const std::vector<int>& block_indices_;  //< vector of the indices of the
+    //< blocks along the Diagonal
     DiagonalVector diagonal_;
 };
 

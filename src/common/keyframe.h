@@ -12,8 +12,8 @@
 
 namespace lightning {
 
-/// 关键帧描述
-/// NOTE: 在添加后端后，需要加锁
+// 关键帧描述
+// NOTE: 在添加后端后，需要加锁
 class Keyframe {
    public:
     using Ptr = std::shared_ptr<Keyframe>;
@@ -65,7 +65,7 @@ class Keyframe {
     unsigned long id_ = 0;
 
     double timestamp_ = 0;
-    CloudPtr cloud_ = nullptr;  /// 降采样之后的点云
+    CloudPtr cloud_ = nullptr;  // 降采样之后的点云
 
     std::mutex data_mutex_;
     SE3 pose_lio_;  // 前端的pose

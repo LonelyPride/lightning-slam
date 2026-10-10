@@ -1,5 +1,5 @@
-/// @file
-/// Calculation of biinvariant means.
+// @file
+// Calculation of biinvariant means.
 
 #ifndef SOPHUS_AVERAGE_HPP
 #define SOPHUS_AVERAGE_HPP
@@ -16,10 +16,10 @@
 
 namespace Sophus {
 
-/// Calculates mean iteratively.
-///
-/// Returns ``nullopt`` if it does not converge.
-///
+// Calculates mean iteratively.
+//
+// Returns ``nullopt`` if it does not converge.
+//
 template <class SequenceContainer>
 optional<typename SequenceContainer::value_type> iterativeMean(
     SequenceContainer const& foo_Ts_bar, int max_num_iterations) {
@@ -55,7 +55,7 @@ optional<typename SequenceContainer::value_type> iterativeMean(
 }
 
 #ifdef DOXYGEN_SHOULD_SKIP_THIS
-/// Mean implementation for any Lie group.
+// Mean implementation for any Lie group.
 template <class SequenceContainer, class Scalar>
 optional<typename SequenceContainer::value_type> average(
     SequenceContainer const& foo_Ts_bar);

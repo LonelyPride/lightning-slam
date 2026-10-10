@@ -171,7 +171,7 @@ The *VideoViewer* tool takes these URI's directly in order to specify what image
 
 ```bash
 VideoViewer test://
-VideoViewer uvc:[size=640x480]///dev/video0
+VideoViewer uvc:[size=640x480]//dev/video0
 VideoViewer flip://debayer:[tile=rggb,method=downsample]//file://~/somefile.pango
 ```
 

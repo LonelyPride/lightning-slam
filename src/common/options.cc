@@ -8,7 +8,7 @@ namespace lightning {
 
 namespace debug {
 
-/// debug and save
+// debug and save
 bool flg_exit = false;   // ctrl-c中断
 bool flg_pause = false;  // 暂停
 bool flg_next = false;   // 暂停后，放行单个消息(单步调试)

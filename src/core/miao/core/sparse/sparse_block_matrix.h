@@ -156,10 +156,10 @@ class SparseBlockMatrix {
     bool WriteOctave(const std::string& filename, bool upperTriangle = true) const;
 
    protected:
-    std::vector<int> row_block_indices_;  ///< vector of the indices of the blocks
-    ///< along the Rows.
-    std::vector<int> col_block_indices_;  ///< vector of the indices of the blocks
-    ///< along the Cols
+    std::vector<int> row_block_indices_;  //< vector of the indices of the blocks
+    //< along the Rows.
+    std::vector<int> col_block_indices_;  //< vector of the indices of the blocks
+    //< along the Cols
     //! array of maps of blocks. The index of the array represent a Block column
     //! of the matrix and the Block column is stored as a map row_block ->
     //! matrix_block_ptr.

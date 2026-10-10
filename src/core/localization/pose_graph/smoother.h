@@ -27,10 +27,10 @@ class PoseSmoother {
     void PushDRPose(const SE3& dr_pose) {
         UL lock(data_mutex_);
 
-        /// 检查dr pose和末尾那个pose之间的距离
+        // 检查dr pose和末尾那个pose之间的距离
         if (!dr_queue_.empty()) {
             if ((dr_pose.translation() - dr_queue_.back().translation()).norm() >= smoother_dr_limit_trans_) {
-                /// 无效
+                // 无效
                 LOG(WARNING) << "smoother motion is too large: "
                              << (dr_pose.translation() - dr_queue_.back().translation()).norm();
                 dr_queue_.clear();

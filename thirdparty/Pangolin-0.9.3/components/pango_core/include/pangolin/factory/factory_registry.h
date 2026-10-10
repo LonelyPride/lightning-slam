@@ -40,21 +40,21 @@
 namespace pangolin
 {
 
-/// Registry class for managing FactoryInterface instances.
-/// Use Factory instantiation to decouple implementation and use
-/// of interface types and easy configure construction through
-/// a URI-like syntax.
+// Registry class for managing FactoryInterface instances.
+// Use Factory instantiation to decouple implementation and use
+// of interface types and easy configure construction through
+// a URI-like syntax.
 class FactoryRegistry
 {
 public:
     using TypeRegistry = std::vector<std::shared_ptr<FactoryInterface>>;
 
-    /// Singleton instance of FactoryRegistry
+    // Singleton instance of FactoryRegistry
     static std::shared_ptr<FactoryRegistry> I();
 
     ~FactoryRegistry() {}
 
-    /// Register a new TypedFactoryInterface with the registry
+    // Register a new TypedFactoryInterface with the registry
     template<typename T>
     bool RegisterFactory( const std::shared_ptr<TypedFactoryInterface<T>>& factory )
     {
@@ -63,8 +63,8 @@ public:
         return true;
     }
 
-    /// Unregister an existing factory.
-    /// Do nothing if factory isn't registered.
+    // Unregister an existing factory.
+    // Do nothing if factory isn't registered.
     template<typename T>
     void UnregisterFactory(TypedFactoryInterface<T>* factory)
     {
@@ -76,15 +76,15 @@ public:
            registry.end());
     }
 
-    /// Remove all Factories from all types
+    // Remove all Factories from all types
     void UnregisterAllFactories()
     {
         type_registries.clear();
     }
 
-    /// Attempt to Construct an instance of \tparam T using the highest precedence
-    /// \class FactoryInterface which acceps \param uri
-    /// \throws FactoryRegistry::Exception
+    // Attempt to Construct an instance of \tparam T using the highest precedence
+    // \class FactoryInterface which acceps \param uri
+    // \throws FactoryRegistry::Exception
     template<typename T>
     std::unique_ptr<T> Construct(const Uri& uri)
     {
@@ -139,7 +139,7 @@ public:
         return GetFactories(typeid(T));
     }
 
-    /// Base class for FactoryRegistry Exceptions
+    // Base class for FactoryRegistry Exceptions
     class Exception : public std::exception {
     public:
         Exception(const Uri& uri) : uri(uri) {
@@ -187,26 +187,26 @@ private:
     std::map<std::type_index, TypeRegistry> type_registries;
 };
 
-/// Macro to define factory entry point. Add a corresponding line in your cmake:
-///    `PangolinRegisterFactory(MyInterfaceType MyFactoryType)`
-/// in order to have the method added to an initialization method for MyInterfaceType
-///
-/// \tparam x is the factory interface class (such as WindowInterface, VideoInterface, etc)
-/// \return true iff registration was successful.
+// Macro to define factory entry point. Add a corresponding line in your cmake:
+//    `PangolinRegisterFactory(MyInterfaceType MyFactoryType)`
+// in order to have the method added to an initialization method for MyInterfaceType
+//
+// \tparam x is the factory interface class (such as WindowInterface, VideoInterface, etc)
+// \return true iff registration was successful.
 #define PANGOLIN_REGISTER_FACTORY(x) \
     bool Register ## x ## Factory()
 //  {
 //    return FactoryRegistry::I()->RegisterFactory<x>(std::make_shared<MyFactoryClass>());
 //  }
 
-/// Macro to define factory entry point with automatic static initialization.
-/// Use this instead of the macro above to automatically register a factory when the compilation
-/// unit is loaded, and you can guarentee the symbols will remain.
-/// e.g. within a dynamic library which you will explicitly load, or within the same
-/// compilation unit as your main().
-///
-/// \tparam x is the factory interface class (such as WindowInterface, VideoInterface, etc)
-/// \return true iff registration was successful.
+// Macro to define factory entry point with automatic static initialization.
+// Use this instead of the macro above to automatically register a factory when the compilation
+// unit is loaded, and you can guarentee the symbols will remain.
+// e.g. within a dynamic library which you will explicitly load, or within the same
+// compilation unit as your main().
+//
+// \tparam x is the factory interface class (such as WindowInterface, VideoInterface, etc)
+// \return true iff registration was successful.
 // Forward declaration; static load variable; definition
 #define PANGOLIN_REGISTER_FACTORY_WITH_STATIC_INITIALIZER(x) \
     bool Register ## x ## Factory(); \

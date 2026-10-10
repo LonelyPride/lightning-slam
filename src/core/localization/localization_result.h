@@ -9,10 +9,10 @@
 
 namespace lightning::loc {
 
-/// 定位结果，包含所有的信息
-/// 点云定位和最终结果都可以按照这个来输出
+// 定位结果，包含所有的信息
+// 点云定位和最终结果都可以按照这个来输出
 
-/// 定位状态
+// 定位状态
 enum class LocalizationStatus {
     IDLE,          // 0 无定位，也没有准备初始化
     INITIALIZING,  // 1 初始化过程中，位姿无效
@@ -21,20 +21,20 @@ enum class LocalizationStatus {
     FAIL,          // 4 定位失败
 };
 
-/// 定位结果
+// 定位结果
 struct LocalizationResult {
-    /// 对外部分
+    // 对外部分
     double timestamp_ = 0;                                  // 时间戳
     SE3 pose_;                                              // 定位的位置和姿态（lidarLoc和PGO共用此变量）
     bool valid_ = false;                                    // 标志此定位是否有效
     LocalizationStatus status_ = LocalizationStatus::IDLE;  // 定位状态位
 
-    /// 对内部分
-    /// 个人修改："雷达系 → IMU 系"外参（p_imu = R * p_lidar + t）。
-    /// 说明：定位模块（lidar_loc/PGO）内部算出来并使用的 pose_ 是【雷达系】在地图(master map)下的位姿
-    ///   T_map_lidar（见 localization.cpp 中的注释 "here pose means Twl"），
-    ///   因此对外发布 base_link / 送给 UI 之前，必须用它再加上 IMU→车辆旋转换算到车辆(base_link)系。
-    ///   默认值 SE3() 为单位阵：不设置时行为与修改前完全一致。
+    // 对内部分
+    // 个人修改："雷达系 → IMU 系"外参（p_imu = R * p_lidar + t）。
+    // 说明：定位模块（lidar_loc/PGO）内部算出来并使用的 pose_ 是【雷达系】在地图(master map)下的位姿
+    //   T_map_lidar（见 localization.cpp 中的注释 "here pose means Twl"），
+    //   因此对外发布 base_link / 送给 UI 之前，必须用它再加上 IMU→车辆旋转换算到车辆(base_link)系。
+    //   默认值 SE3() 为单位阵：不设置时行为与修改前完全一致。
     SE3 T_imu_lidar_ = SE3();
 
     bool lidar_loc_valid_ = false;        // 该时刻lidarLoc是否有效

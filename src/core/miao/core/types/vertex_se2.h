@@ -13,7 +13,7 @@ class VertexSE2 : public BaseVertex<3, SE2> {
    public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    /// 覆盖oplus
+    // 覆盖oplus
     void OplusImpl(const double *update) override {
         Eigen::Map<const Vector6> v(update);
 

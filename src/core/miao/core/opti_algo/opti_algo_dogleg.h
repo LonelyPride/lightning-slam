@@ -31,14 +31,14 @@ class OptimizationAlgorithmDogleg : public OptimizationAlgorithm {
     double init_lambda_ = 1e-7;
     double lambda_factor_ = 10.0;
 
-    lightning::VectorX hsd_;         ///< steepest decent step
-    lightning::VectorX hdl_;         ///< final dogleg step
-    lightning::VectorX aux_vector_;  ///< auxiliary vector used to perform multiplications or other stuff
+    lightning::VectorX hsd_;         //< steepest decent step
+    lightning::VectorX hdl_;         //< final dogleg step
+    lightning::VectorX aux_vector_;  //< auxiliary vector used to perform multiplications or other stuff
 
-    double current_lambda_ = 0.0;  ///< the damping factor to force positive definite matrix
-    double delta_ = 1e4;           ///< trust region
+    double current_lambda_ = 0.0;  //< the damping factor to force positive definite matrix
+    double delta_ = 1e4;           //< trust region
     bool was_pd_in_all_iterations_ =
-        true;  ///< the matrix we Solve was positive definite in all iterations -> if not apply damping
+        true;  //< the matrix we Solve was positive definite in all iterations -> if not apply damping
     int last_num_tries_ = 0;
 };
 }  // namespace lightning::miao

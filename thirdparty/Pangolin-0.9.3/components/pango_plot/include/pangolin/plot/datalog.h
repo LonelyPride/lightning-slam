@@ -48,7 +48,7 @@
 namespace pangolin
 {
 
-/// Simple statistics recorded for a logged input dimension.
+// Simple statistics recorded for a logged input dimension.
 struct DimensionStats
 {
     DimensionStats()
@@ -84,9 +84,9 @@ struct DimensionStats
 class DataLogBlock
 {
 public:
-    /// @param dim: dimension of sample
-    /// @param max_samples: maximum number of samples this block can hold
-    /// @param start_id: index of first sample (from entire dataset) in this buffer
+    // @param dim: dimension of sample
+    // @param max_samples: maximum number of samples this block can hold
+    // @param start_id: index of first sample (from entire dataset) in this buffer
     DataLogBlock(size_t dim, size_t max_samples, size_t start_id)
         : dim(dim), max_samples(max_samples), samples(0),
           start_id(start_id)
@@ -109,7 +109,7 @@ public:
         return max_samples;
     }
 
-    /// Return how many more samples can fit in this block
+    // Return how many more samples can fit in this block
     size_t SampleSpaceLeft() const
     {
         return MaxSamples()- Samples();
@@ -120,10 +120,10 @@ public:
         return Samples() >= MaxSamples();
     }
 
-    /// Add data to block
+    // Add data to block
     void AddSamples(size_t num_samples, size_t dimensions, const float* data_dim_major );
 
-    /// Delete all samples
+    // Delete all samples
     void ClearLinked()
     {
         samples = 0;
@@ -175,18 +175,18 @@ protected:
     std::unique_ptr<DataLogBlock> nextBlock;
 };
 
-/// A DataLog can efficiently record floating point sample data of any size.
-/// Memory is allocated in blocks is transparent to the user.
+// A DataLog can efficiently record floating point sample data of any size.
+// Memory is allocated in blocks is transparent to the user.
 class PANGOLIN_EXPORT DataLog
 {
 public:
-    /// @param block_samples_alloc number of samples each memory block can hold.
+    // @param block_samples_alloc number of samples each memory block can hold.
     DataLog(unsigned int block_samples_alloc = 10000 );
 
     ~DataLog();
 
-    /// Provide textual labels corresponding to each dimension logged.
-    /// This information may be used by graphical interfaces to DataLog.
+    // Provide textual labels corresponding to each dimension logged.
+    // This information may be used by graphical interfaces to DataLog.
     void SetLabels(const std::vector<std::string> & labels);
     const std::vector<std::string>& Labels() const;
 

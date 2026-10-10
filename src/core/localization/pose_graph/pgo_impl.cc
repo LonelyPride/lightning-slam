@@ -18,9 +18,9 @@ namespace lightning::loc {
 
 namespace {
 
-/// SE3 转g2o的SE3Quat
+// SE3 转g2o的SE3Quat
 
-/// 把约束边信息转化为字符串
+// 把约束边信息转化为字符串
 template <typename T>
 std::string print_info(const std::vector<T>& edges, double th = 0) {
     std::vector<double> chi2;
@@ -44,11 +44,11 @@ std::string print_info(const std::vector<T>& edges, double th = 0) {
 
 }  // namespace
 
-/// alias for pgo option
+// alias for pgo option
 PGOImpl::PGOImpl(Options options) {
     options_ = options;
 
-    /// set noise params
+    // set noise params
     auto set6dnoise = [](Vec6d& noise_item, const double& pos_noise, const double& ang_noise) {
         noise_item.head<3>() = Vec3d::Ones() * pos_noise;
         noise_item.tail<3>() = Vec3d::Ones() * ang_noise;
@@ -116,7 +116,7 @@ void PGOImpl::AddPGOFrame(std::shared_ptr<PGOFrame> pgo_frame) {
     // 2023-02-16：在唯一触发源唯一的情况下，无需考虑到达时间不一致问题
     frames_.emplace_back(pgo_frame);
 
-    /// 触发一次优化
+    // 触发一次优化
     RunOptimization();
 
     // // 根据优化更新一些状态量
@@ -128,7 +128,7 @@ void PGOImpl::AddPGOFrame(std::shared_ptr<PGOFrame> pgo_frame) {
     // 清空
     // CleanProblem();
 
-    /// 需要时，删除一部分
+    // 需要时，删除一部分
     SlideWindowAdaptively();
 
     last_frame_ = current_frame_;
@@ -294,8 +294,8 @@ void PGOImpl::AddVertex() {
 
     optimizer_->AddVertex(v);
 
-    /// NOTE: 在incremental模式下，optimizer可能会修改顶点的ID（需要代替过去的某个顶点），
-    /// 这导致顶点ID与frame_id对应不上。这里我们将frame_id改成顶点ID
+    // NOTE: 在incremental模式下，optimizer可能会修改顶点的ID（需要代替过去的某个顶点），
+    // 这导致顶点ID与frame_id对应不上。这里我们将frame_id改成顶点ID
     current_frame_->frame_id_ = v->GetId();
 
     vertices_.emplace_back(v);
@@ -307,7 +307,7 @@ void PGOImpl::AddLidarLocFactors() {
         return;
     }
 
-    /// 不管lidarLoc是否为valid，factor都会加，只是可能会判为outlier
+    // 不管lidarLoc是否为valid，factor都会加，只是可能会判为outlier
     SE3 loc_obs_pose = current_frame_->lidar_loc_pose_;
     Mat6d loc_obs_cov = Mat6d::Zero();
     loc_obs_cov(0, 0) = lidar_loc_noise_[0] * lidar_loc_noise_[0];
@@ -389,7 +389,7 @@ void PGOImpl::AddLidarOdomFactors() {
         Mat6d rel_obs_info = lo_obs_cov.inverse();
         e->SetInformation(rel_obs_info);
 
-        /// 这个e仍然需要robust kernel
+        // 这个e仍然需要robust kernel
         auto rk = std::make_shared<miao::RobustKernelCauchy>();
         rk->SetDelta(options_.lidar_odom_ang_noise);
         e->SetRobustKernel(rk);
@@ -523,7 +523,7 @@ void PGOImpl::RemoveOutliers() {
 void PGOImpl::UpdatePoseGraphState() {}
 
 void PGOImpl::CollectOptimizationStatistics() {
-    /// 打印必要信息
+    // 打印必要信息
     if (debug_) {
         LOG(INFO) << std::string("LidarLoc       -- ") + print_info(lidar_loc_edges_, options_.lidar_loc_outlier_th);
         LOG(INFO) << std::string("LidarOdom      -- ") + print_info(lidar_odom_edges_);
@@ -588,7 +588,7 @@ void PGOImpl::UpdateFinalResultByLastFrame() {
     // result_.absolute_pose_valid_ = lf->rtk_valid_;  // outlier也算valid
     // result_.rtk_status_ = gps_queue_.back().gps_status_;  // 发送给下游：rtk实时状态
 
-    /// 确定整体定位状态
+    // 确定整体定位状态
     // if (lf->rtk_valid_ && lf->lidar_loc_valid_ && lf->lidar_odom_valid_) {
     //   result_.status_ = common::GlobalPoseStatus::FOLLOWING_ALL;
     // } else if (lf->rtk_valid_ && lf->lidar_loc_valid_) {
@@ -638,7 +638,7 @@ void PGOImpl::UpdateFinalResultByWindow() {
 
     // LOG(INFO) << "PGO assigned result with position [" << result_.pose_.translation().transpose() << "].";
 
-    /// 确定各个source的定位状态
+    // 确定各个source的定位状态
     bool following_gps = false;
     bool following_lidar_loc = false;
     bool following_lidar_odom = lf->lidar_odom_valid_;
@@ -723,7 +723,7 @@ void PGOImpl::UpdateFinalResultByWindow() {
     // LOG(INFO) << "PGO assigned result with global status [" << common::StatusToString(result_.status_) << "].";
 
     // // 判定是否需要尝试从RTK pose来搜索激光定位
-    // /// 如果最近的rtk有效 (且与优化pose有明显差异)，无论如何都可以尝试一下（试试又不会怀孕）
+    // // 如果最近的rtk有效 (且与优化pose有明显差异)，无论如何都可以尝试一下（试试又不会怀孕）
     // if (lf->rtk_valid_ &&
     //     (lf->rtk_pose_.translation().head<2>() - lf->lidar_loc_pose_.translation().head<2>()).norm() > 0.2) {
     //     LOG(INFO) << "should try rtk pose: " << lf->rtk_pose_.translation().head<2>().transpose()
@@ -736,7 +736,7 @@ void PGOImpl::UpdateFinalResultByWindow() {
 
 void PGOImpl::PGOFrameToResult(const PGOFramePtr& frame, LocalizationResult& result) {
     if ((result.timestamp_ - frame->timestamp_) > 0.3) {
-        /// 激光定位与当前时刻相差太多，则放弃设置此结果
+        // 激光定位与当前时刻相差太多，则放弃设置此结果
         return;
     }
 
@@ -760,14 +760,14 @@ void PGOImpl::PGOFrameToResult(const PGOFramePtr& frame, LocalizationResult& res
     result.lidar_odom_delta_t_ = frame->lidar_odom_delta_t_;
     result.dr_delta_t_ = frame->dr_delta_t_;
 
-    /// 此时检查外推历史队列和融合定位队列
+    // 此时检查外推历史队列和融合定位队列
     // SE3 output_history_pose;
     // common::TimedPose match;
     // if (result.lidar_loc_valid_ &&
     //     common::math::PoseInterp<common::TimedPose>(
     //         result.timestamp_, output_pose_queue_, [](const common::TimedPose& p) { return p.time_; },
     //         [](const common::TimedPose& p) { return p.pose_; }, output_history_pose, match)) {
-    //     /// 检查历史位姿和当前定位的差异。如果差异较少，则取一个平均以保证外推平滑性
+    //     // 检查历史位姿和当前定位的差异。如果差异较少，则取一个平均以保证外推平滑性
     //     SE3 delta = result.pose_.inverse() * output_history_pose;
     //     if (delta.translation().norm() < 0.3 && delta.so3().log().norm() < 1.5 * M_PI / 180.0) {
     //         const double fusion_ratio = 0.7;  // 更偏向于历史外推？
@@ -844,8 +844,8 @@ void PGOImpl::SlideWindowAdaptively() {
 }
 
 void PGOImpl::Marginalize(const PGOFramePtr& frame_to_remove, const PGOFramePtr& frame_to_keep) {
-    /// 严格来说，我们需要按照边缘化理论实现这套东西； /// TODO: @wgh 实现边缘化算法
-    /// 但受限于时间，我们先极简处理一下，跑通流程要紧。
+    // 严格来说，我们需要按照边缘化理论实现这套东西； // TODO: @wgh 实现边缘化算法
+    // 但受限于时间，我们先极简处理一下，跑通流程要紧。
 
     frame_to_keep->prior_pose_ = frame_to_keep->opti_pose_;
     // frame_to_keep->prior_cov_;

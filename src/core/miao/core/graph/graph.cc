@@ -33,7 +33,7 @@ bool Graph::AddEdge(std::shared_ptr<Edge> e) {
         }
     }
 
-    /// 检查edge中是否有重复顶点
+    // 检查edge中是否有重复顶点
     std::unordered_set<Vertex*> vertexPointer;
     auto ves = e->GetVertices();
     for (const auto& v : ves) {
@@ -102,7 +102,7 @@ bool Graph::RemoveEdge(Edge* e) {
         return false;
     }
 
-    /// note: 直接在edges里移除it会导致shared_ptr计数清零，e变为dangling pointer
+    // note: 直接在edges里移除it会导致shared_ptr计数清零，e变为dangling pointer
     std::shared_ptr<Edge> edge_to_remove = *it;
     edges_.erase(it);
     for (const auto& vit : e->GetVertices()) {

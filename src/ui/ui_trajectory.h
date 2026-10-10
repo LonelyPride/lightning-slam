@@ -6,15 +6,15 @@
 
 namespace lightning::ui {
 
-/// UI中的轨迹绘制
+// UI中的轨迹绘制
 class UiTrajectory {
    public:
     UiTrajectory(const Vec3f& color) : color_(color) { pos_.reserve(max_size_); }
 
-    /// 增加一个轨迹点到opengl缓冲区
+    // 增加一个轨迹点到opengl缓冲区
     void AddPt(const SE3& pose);
 
-    /// 渲染此轨迹
+    // 渲染此轨迹
     void Render();
 
     void Clear() {

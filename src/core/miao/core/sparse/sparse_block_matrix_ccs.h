@@ -36,8 +36,8 @@ class SparseBlockMatrixCCS {
      * \brief A Block within a column
      */
     struct RowBlock {
-        int row;                      ///< row of the Block
-        MatrixType* block = nullptr;  ///< matrix pointer for the Block
+        int row;                      //< row of the Block
+        MatrixType* block = nullptr;  //< matrix pointer for the Block
         RowBlock() : row(-1), block(nullptr) {}
         RowBlock(int r, MatrixType* b) : row(r), block(b) {}
         bool operator<(const RowBlock& other) const { return row < other.row; }
@@ -168,10 +168,10 @@ class SparseBlockMatrixCCS {
     }
 
    protected:
-    const std::vector<int>& row_block_indices_;  ///< vector of the indices of the
-    ///< blocks along the Rows.
-    const std::vector<int>& col_block_indices_;  ///< vector of the indices of the blocks along the Cols
-    std::vector<SparseColumn> block_cols_;       ///< the matrices stored in CCS order
+    const std::vector<int>& row_block_indices_;  //< vector of the indices of the
+    //< blocks along the Rows.
+    const std::vector<int>& col_block_indices_;  //< vector of the indices of the blocks along the Cols
+    std::vector<SparseColumn> block_cols_;       //< the matrices stored in CCS order
 };
 }  // namespace lightning::miao
 

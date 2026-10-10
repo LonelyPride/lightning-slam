@@ -33,8 +33,8 @@
 namespace pangolin
 {
 
-/// You can use these methods to drive Pangolin events when it
-/// doesn't own the OpenGL Context. You can probably ignore these.
+// You can use these methods to drive Pangolin events when it
+// doesn't own the OpenGL Context. You can probably ignore these.
 namespace process
 {
   PANGOLIN_EXPORT

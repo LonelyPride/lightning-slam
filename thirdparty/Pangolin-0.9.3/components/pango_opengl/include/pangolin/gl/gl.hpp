@@ -38,9 +38,9 @@
 namespace pangolin
 {
 
-////////////////////////////////////////////////
+////////////////////////////////
 // Implementation of gl.h
-////////////////////////////////////////////////
+////////////////////////////////
 
 #ifndef HAVE_GLES
 const int MAX_ATTACHMENTS = 8;
@@ -504,7 +504,7 @@ inline void GlTexture::RenderToViewportFlipXFlipY() const
     glDisable(GL_TEXTURE_2D);
 }
 
-////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////
 
 inline GlRenderBuffer::GlRenderBuffer()
     : width(0), height(0), rbid(0)
@@ -574,7 +574,7 @@ inline GlRenderBuffer::GlRenderBuffer(GlRenderBuffer&& tex)
     tex.rbid = tex.width = tex.height = 0;
 }
 
-////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////
 
 inline GlFramebuffer::GlFramebuffer()
     : fbid(0), attachments(0)
@@ -687,7 +687,7 @@ inline void GlFramebuffer::AttachDepth(GlRenderBuffer& rb )
     CheckGlDieOnError();
 }
 
-////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////
 
 inline GlBufferData::GlBufferData()
     : bo(0)
@@ -809,7 +809,7 @@ inline void GlBufferData::Upload(const Eigen::DenseBase<Derived>& data, GLintptr
 }
 #endif
 
-////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////
 
 inline GlBuffer::GlBuffer()
     : GlBufferData(), datatype(0), num_elements(0), count_per_element(0)
@@ -900,7 +900,7 @@ GlBuffer::GlBuffer(GlBufferType buffer_type, const std::vector<Scalar>& data, GL
     }
 #endif
 
-////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////
 
 inline GlSizeableBuffer::GlSizeableBuffer(GlBufferType buffer_type, GLuint initial_num_elements, GLenum datatype, GLuint count_per_element, GLenum gluse )
     : GlBuffer(buffer_type, initial_num_elements, datatype, count_per_element, gluse), m_num_verts(0)
@@ -964,7 +964,7 @@ inline size_t GlSizeableBuffer::NextSize(size_t min_size) const
     return new_size;
 }
 
-////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////
 
 inline GlVertexArrayObject::GlVertexArrayObject()
 {
@@ -998,7 +998,7 @@ inline void GlVertexArrayObject::AddVertexAttrib(GLuint attrib_location, const G
 
 }
 
-////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////
 
 inline TypedImage ReadFramebuffer(const Viewport& v, const std::string& pixel_format)
 {

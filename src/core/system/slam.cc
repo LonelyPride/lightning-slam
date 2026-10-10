@@ -21,7 +21,7 @@
 namespace lightning {
 
 SlamSystem::SlamSystem(lightning::SlamSystem::Options options) : options_(options) {
-    /// handle ctrl-c
+    // handle ctrl-c
     signal(SIGINT, lightning::debug::SigHandle);
 }
 
@@ -63,14 +63,14 @@ bool SlamSystem::Init(const std::string& yaml_path) {
         g2p5_->Init(yaml_path);
 
         if (options_.with_loop_closing_) {
-            /// 当发生回环时，触发一次重绘
+            // 当发生回环时，触发一次重绘
             lc_->SetLoopClosedCB([this]() { g2p5_->RedrawGlobalMap(); });
         }
 
-        /// 个人修改（2026-10-02，方案C）：世界系被"重力再对齐"（刚性旋转）后必须重绘栅格图。
-        ///   原因：g2p5 的 2.5D 栅格图是在线用关键帧位姿画出来的；世界系一旦被整体旋转，
-        ///   已经画进去的点仍留在旧世界系里，与新的点云地图/定位结果不一致（2D 层会整体歪掉）。
-        ///   RedrawGlobalMap() 会按【当前】关键帧位姿重建整张图，正是这里需要的动作。
+        // 个人修改（2026-10-02，方案C）：世界系被"重力再对齐"（刚性旋转）后必须重绘栅格图。
+        //   原因：g2p5 的 2.5D 栅格图是在线用关键帧位姿画出来的；世界系一旦被整体旋转，
+        //   已经画进去的点仍留在旧世界系里，与新的点云地图/定位结果不一致（2D 层会整体歪掉）。
+        //   RedrawGlobalMap() 会按【当前】关键帧位姿重建整张图，正是这里需要的动作。
         lio_->SetWorldFrameFixedCallback([this]() {
             if (g2p5_ != nullptr) {
                 LOG(WARNING) << "个人修改（方案C）：检测到世界系重力再对齐，触发 g2p5 栅格地图整体重绘";
@@ -96,7 +96,7 @@ bool SlamSystem::Init(const std::string& yaml_path) {
     if (options_.online_mode_) {
         LOG(INFO) << "online mode, creating ros2 node ... ";
 
-        /// subscribers
+        // subscribers
         node_ = std::make_shared<rclcpp::Node>("lightning_slam");
 
         imu_topic_ = yaml["common"]["imu_topic"].as<std::string>();
@@ -182,11 +182,11 @@ void SlamSystem::SaveMap(const std::string& path) {
 
     TiledMap tm(tm_options);
 
-    /// 个人修改（外参补丁配套）：index.txt 里写的功能点 "start" 会被定位端当作
-    ///   【雷达系】位姿 T_map_lidar 的初始化候选（lidar_loc.cc: LoadMapIndex 读入后
-    ///   在初始化时 InitWithFP(input, fp.pose_) 直接使用），因此这里必须与补丁后
-    ///   global.pcd / 分块 pcd 的坐标系一致，存【雷达系】位姿 T_w_lidar = T_w_imu * T_imu_lidar。
-    ///   原来存的是 GetOptPose()（IMU/body 系），会让定位初始化从一个歪 90° 的位姿开始。
+    // 个人修改（外参补丁配套）：index.txt 里写的功能点 "start" 会被定位端当作
+    //   【雷达系】位姿 T_map_lidar 的初始化候选（lidar_loc.cc: LoadMapIndex 读入后
+    //   在初始化时 InitWithFP(input, fp.pose_) 直接使用），因此这里必须与补丁后
+    //   global.pcd / 分块 pcd 的坐标系一致，存【雷达系】位姿 T_w_lidar = T_w_imu * T_imu_lidar。
+    //   原来存的是 GetOptPose()（IMU/body 系），会让定位初始化从一个歪 90° 的位姿开始。
     const SE3 start_pose = vehicle_frame::ToLidarPose(lio_->GetAllKeyframes().front()->GetOptPose(),
                                                       lio_->T_imu_lidar_extrinsic());
     tm.ConvertFromFullPCD(global_map, start_pose, save_path);
@@ -196,7 +196,7 @@ void SlamSystem::SaveMap(const std::string& path) {
     // pcl::io::savePCDFileBinaryCompressed(save_path + "/global_raw.pcd", *global_map_raw);
 
     if (options_.with_gridmap_) {
-        /// 存为ROS兼容的模式
+        // 存为ROS兼容的模式
         auto map = g2p5_->GetNewestMap()->ToROS();
         const int width = map.info.width;
         const int height = map.info.height;
@@ -219,7 +219,7 @@ void SlamSystem::SaveMap(const std::string& path) {
 
         cv::imwrite(save_path + "/map.pgm", nav_image);
 
-        /// yaml
+        // yaml
         std::ofstream yamlFile(save_path + "/map.yaml");
         if (!yamlFile.is_open()) {
             LOG(ERROR) << "failed to write map.yaml";

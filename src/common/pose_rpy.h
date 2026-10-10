@@ -7,7 +7,7 @@
 
 namespace lightning{
 
-/// 以欧拉角表达的Pose
+// 以欧拉角表达的Pose
 template <typename T>
 struct PoseRPY {
     PoseRPY() = default;

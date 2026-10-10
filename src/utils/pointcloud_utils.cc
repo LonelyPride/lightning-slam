@@ -9,7 +9,7 @@
 
 namespace lightning {
 
-/// 体素滤波
+// 体素滤波
 CloudPtr VoxelGrid(CloudPtr cloud, float voxel_size) {
     pcl::VoxelGrid<PointType> voxel;
     voxel.setLeafSize(voxel_size, voxel_size, voxel_size);
@@ -20,7 +20,7 @@ CloudPtr VoxelGrid(CloudPtr cloud, float voxel_size) {
     return output;
 }
 
-/// 移除地面
+// 移除地面
 void RemoveGround(CloudPtr cloud, float z_min) {
     CloudPtr output(new PointCloudType);
     for (const auto &pt : cloud->points) {

@@ -17,7 +17,7 @@ DEFINE_string(input_bag, "", "输入数据包");
 DEFINE_string(config, "./config/default.yaml", "配置文件");
 DEFINE_string(map_path, "./data/new_map/", "地图路径");
 
-/// 运行定位的测试
+// 运行定位的测试
 int main(int argc, char** argv) {
     google::InitGoogleLogging(argv[0]);
     FLAGS_colorlogtostderr = true;

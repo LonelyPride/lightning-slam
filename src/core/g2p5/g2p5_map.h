@@ -26,7 +26,7 @@ namespace lightning::g2p5 {
 class G2P5Map {
    public:
     struct Options {
-        float resolution_ = 0.05;      /// 子网格的最高分辨率
+        float resolution_ = 0.05;      // 子网格的最高分辨率
         float occupancy_ratio_ = 0.3;  // 占用比例
     };
 
@@ -37,19 +37,19 @@ class G2P5Map {
 
     ~G2P5Map();
 
-    /// 子网格的大小
+    // 子网格的大小
     static inline constexpr int SUB_GRID_SIZE = SubGrid::SUB_GRID_SIZE;
 
-    /// 由自身内容创建一个深拷贝
+    // 由自身内容创建一个深拷贝
     std::shared_ptr<G2P5Map> MakeDeepCopy();
 
-    /// 转换至ros occupancy grid
+    // 转换至ros occupancy grid
     nav_msgs::msg::OccupancyGrid ToROS();
 
-    /// 转换至opencv::Mat
+    // 转换至opencv::Mat
     cv::Mat ToCV();
 
-    /// 清空内部数据
+    // 清空内部数据
     void ReleaseResources();
 
     bool Init(const float &temp_min_x, const float &temp_min_y, const float &temp_max_x, const float &temp_max_y);
@@ -100,7 +100,7 @@ class G2P5Map {
     inline int MapIdx(int sx, int x, int y) { return (sx) * (y) + (x); }
 
    private:
-    float grid_reso_ = 0.0;  /// subgrid的栅格分辨率
+    float grid_reso_ = 0.0;  // subgrid的栅格分辨率
     float min_x_ = 0, min_y_ = 0, max_x_ = 0, max_y_ = 0;
     int grid_size_x_ = 0, grid_size_y_ = 0;
 

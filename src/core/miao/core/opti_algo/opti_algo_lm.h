@@ -38,10 +38,10 @@ class OptimizationAlgorithmLevenberg : public OptimizationAlgorithm {
     double user_lambda_limit_ = 0;
     double current_lambda_ = -1;
     double tau_ = 1e-5;
-    double good_step_lower_ = 1.0 / 3.0;  ///< lower bound for lambda decrease if a good  LM step
-    double good_step_upper_ = 2.0 / 3.0;  ///< upper bound for lambda decrease if a good  LM step
+    double good_step_lower_ = 1.0 / 3.0;  //< lower bound for lambda decrease if a good  LM step
+    double good_step_upper_ = 2.0 / 3.0;  //< upper bound for lambda decrease if a good  LM step
     double ni_ = 2.0;
-    int lm_iter_ = 0;  ///< the number of levenberg iterations performed to accept the last step
+    int lm_iter_ = 0;  //< the number of levenberg iterations performed to accept the last step
 };
 
 }  // namespace lightning::miao

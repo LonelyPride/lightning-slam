@@ -28,7 +28,7 @@ class EdgePointOnCurve : public miao::BaseUnaryEdge<1, Eigen::Vector2d, VertexPa
    public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     EdgePointOnCurve() = default;
-    /// 计算误差
+    // 计算误差
     void ComputeError() override {
         auto v = (VertexParams*)(GetVertex(0));
         Vec3d est = v->Estimate();

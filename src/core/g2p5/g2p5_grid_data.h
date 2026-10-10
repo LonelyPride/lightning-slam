@@ -7,8 +7,8 @@
 
 namespace lightning::g2p5 {
 
-/// 2.5D 子地图定义
-/// 子网格中的数据内容
+// 2.5D 子地图定义
+// 子网格中的数据内容
 struct GridData {
     explicit GridData(unsigned int occupySum = 0, unsigned int visitSum = 0)
         : hit_cnt_(occupySum), visit_cnt_(visitSum) {}

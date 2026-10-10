@@ -32,9 +32,9 @@ bool LaserMapping::Init(const std::string &config_yaml) {
     eskf_options.max_iterations_ = fasterlio::NUM_MAX_ITERATIONS;
     eskf_options.epsi_ = 1e-3 * Eigen::Matrix<double, ESKF::state_dim_, 1>::Ones();
     eskf_options.lidar_obs_func_ = [this](NavState &s, ESKF::CustomObservationModel &obs) { ObsModel(s, obs); };
-    /// 个人修改（2026-10-02，方案C）：接通"重力作为加计观测"（原 ESKF 已预留接口但从未注册/调用）。
-    ///   它是姿态的【绝对竖直参考】：低动态时把"加计测到的比力方向 = 竖直向上"作为软观测并入 ESKF，
-    ///   防止 roll/pitch 被 LiDAR 更新（尤其是几何退化场景）冻住后再也无法纠回。
+    // 个人修改（2026-10-02，方案C）：接通"重力作为加计观测"（原 ESKF 已预留接口但从未注册/调用）。
+    //   它是姿态的【绝对竖直参考】：低动态时把"加计测到的比力方向 = 竖直向上"作为软观测并入 ESKF，
+    //   防止 roll/pitch 被 LiDAR 更新（尤其是几何退化场景）冻住后再也无法纠回。
     eskf_options.acc_as_gravity_obs_func_ = [this](NavState &s, ESKF::CustomObservationModel &obs) {
         AccAsGravityObsModel(s, obs);
     };
@@ -71,11 +71,11 @@ bool LaserMapping::LoadParamsFromYAML(const std::string &yaml_file) {
         extrinT_ = yaml["fasterlio"]["extrinsic_T"].as<std::vector<double>>();
         extrinR_ = yaml["fasterlio"]["extrinsic_R"].as<std::vector<double>>();
 
-        /// 个人修改（2026-10-02 第5次修复）：可选键 fasterlio.ground_normal_lidar = 雷达系里的
-        ///   【实测路面法向】（单位向量，缺省 (0,1,0) = 旧行为）。它只用于启动时的 up 方向自检
-        ///   参照（见 TryInitVehicleFrameFromGravity 与 laser_mapping.h 的说明）：
-        ///   本平台雷达相对重力倾斜安装，雷达 +y 与实测路面法向差 10.59°，只有用实测法向作参照，
-        ///   自检才等价于"地图地面是否水平"。
+        // 个人修改（2026-10-02 第5次修复）：可选键 fasterlio.ground_normal_lidar = 雷达系里的
+        //   【实测路面法向】（单位向量，缺省 (0,1,0) = 旧行为）。它只用于启动时的 up 方向自检
+        //   参照（见 TryInitVehicleFrameFromGravity 与 laser_mapping.h 的说明）：
+        //   本平台雷达相对重力倾斜安装，雷达 +y 与实测路面法向差 10.59°，只有用实测法向作参照，
+        //   自检才等价于"地图地面是否水平"。
         if (yaml["fasterlio"]["ground_normal_lidar"].IsDefined() &&
             !yaml["fasterlio"]["ground_normal_lidar"].IsNull()) {
             const auto n = yaml["fasterlio"]["ground_normal_lidar"].as<std::vector<double>>();
@@ -89,6 +89,20 @@ bool LaserMapping::LoadParamsFromYAML(const std::string &yaml_file) {
             } else {
                 LOG(WARNING) << "个人修改（第5次修复）：fasterlio.ground_normal_lidar 需要 3 个数，实际 "
                              << n.size() << " 个，已退回 (0,1,0)";
+            }
+        }
+
+        // 个人修改（2026-10-09 第6次修复，方案D）：可选键 fasterlio.imu_acc_up_sign = 加计比力【方向符号】
+        //   （缺省 +1 = 旧行为，不影响其它平台）。本平台（狗）驱动把比力方向反了号，必须设 -1：
+        //   同一 bag 两条独立实测都指向 -1（地面法向 ⇒ angle=179.23°；tf_static 链 ⇒ 179.52°），
+        //   详见 imu_processing.hpp::SetAccUpSign() 注释。这里只做合法性检查，真正的应用在下面 SetExtrinsic 旁。
+        if (yaml["fasterlio"]["imu_acc_up_sign"].IsDefined() && !yaml["fasterlio"]["imu_acc_up_sign"].IsNull()) {
+            const double s = yaml["fasterlio"]["imu_acc_up_sign"].as<double>();
+            if (s == 1.0 || s == -1.0) {
+                imu_acc_up_sign_ = s;
+            } else {
+                LOG(WARNING) << "个人修改（第6次修复）：fasterlio.imu_acc_up_sign 只接受 +1/-1，实际 " << s
+                             << " ⇒ 已退回 +1（标准加计约定）";
             }
         }
 
@@ -119,12 +133,12 @@ bool LaserMapping::LoadParamsFromYAML(const std::string &yaml_file) {
         return false;
     }
 
-    /// 个人修改（方案A+）：IMU → 车辆(base_link) 安装旋转（车体安装姿态）的读取。
-    ///   三项都可以不写：缺省 = identity = 不做换算（等价于加方案A之前的输出）。均为可选键，
-    ///   放在 common 段，与上面的必需参数分开，缺了也不会触发 "bad conversion" 起不来。
-    ///     common.vehicle_imu_mount        : auto / identity / x_down / x_up
-    ///     common.vehicle_imu_forward_axis : auto 模式下"车头"对应的 IMU 轴（x/y/z，可带负号，默认 z）
-    ///     common.vehicle_imu_R            : 行主序 9 个数，直接给出 M（优先级最高，可描述任意安装）
+    // 个人修改（方案A+）：IMU → 车辆(base_link) 安装旋转（车体安装姿态）的读取。
+    //   三项都可以不写：缺省 = identity = 不做换算（等价于加方案A之前的输出）。均为可选键，
+    //   放在 common 段，与上面的必需参数分开，缺了也不会触发 "bad conversion" 起不来。
+    //     common.vehicle_imu_mount        : auto / identity / x_down / x_up
+    //     common.vehicle_imu_forward_axis : auto 模式下"车头"对应的 IMU 轴（x/y/z，可带负号，默认 z）
+    //     common.vehicle_imu_R            : 行主序 9 个数，直接给出 M（优先级最高，可描述任意安装）
     {
         const auto has_key = [](const YAML::Node &n) { return n.IsDefined() && !n.IsNull(); };
 
@@ -221,21 +235,21 @@ bool LaserMapping::LoadParamsFromYAML(const std::string &yaml_file) {
         gravity_obs_sigma_deg_ = get_num("gravity_obs_sigma_deg", 1.5);
         gravity_obs_acc_tol_ = get_num("gravity_obs_acc_tol", 0.15);
         gravity_obs_gyr_tol_ = get_num("gravity_obs_gyr_tol", 0.15);
-        /// 个人修改（方案C，2026-10-02 加固）：比力【方向】散布门限（度），见 laser_mapping.h 的说明
+        // 个人修改（方案C，2026-10-02 加固）：比力【方向】散布门限（度），见 laser_mapping.h 的说明
         gravity_obs_acc_dir_tol_deg_ = get_num("gravity_obs_acc_dir_tol_deg", 3.0);
-        /// 个人修改（方案C，2026-10-02 第2次加固）：ba 一致性告警阈值（度），见 laser_mapping.h 的说明
+        // 个人修改（方案C，2026-10-02 第2次加固）：ba 一致性告警阈值（度），见 laser_mapping.h 的说明
         gravity_obs_ba_warn_deg_ = get_num("gravity_obs_ba_warn_deg", 2.0);
-        /// 个人修改（方案C，2026-10-02 第3次加固）：【平动加速度】门限（m/s²）+ 速度差分基线（s），
-        /// 见 laser_mapping.h 里"平动加速度门限"的说明（加计自己的三个门限看不出恒定的加/减速）
+        // 个人修改（方案C，2026-10-02 第3次加固）：【平动加速度】门限（m/s²）+ 速度差分基线（s），
+        // 见 laser_mapping.h 里"平动加速度门限"的说明（加计自己的三个门限看不出恒定的加/减速）
         gravity_obs_motion_acc_tol_ = get_num("gravity_obs_motion_acc_tol", 0.35);
         gravity_obs_motion_window_s_ = get_num("gravity_obs_motion_window_s", 1.0);
-        /// 个人修改（方案C，2026-10-02 第3次加固）：世界系再对齐只采信【静止】样本（m/s），
-        /// 见 laser_mapping.h 里"静止门限"的说明（挡运动中的瞬时冲击假重力）
+        // 个人修改（方案C，2026-10-02 第3次加固）：世界系再对齐只采信【静止】样本（m/s），
+        // 见 laser_mapping.h 里"静止门限"的说明（挡运动中的瞬时冲击假重力）
         gravity_obs_max_speed_mps_ = get_num("gravity_obs_max_speed_mps", 0.05);
         gravity_obs_every_n_scan_ = get_int("gravity_obs_every_n_scan", 1);
         gravity_obs_sigma_scale_ = get_num("gravity_obs_sigma_scale", 1.0);
         gravity_obs_prior_inflation_deg_ = get_num("gravity_obs_prior_inflation_deg", 0.5);
-        /// 个人修改（方案C，2026-10-02 第4次修复①）：【行驶中的竖直锚】参数（见 laser_mapping.h）
+        // 个人修改（方案C，2026-10-02 第4次修复①）：【行驶中的竖直锚】参数（见 laser_mapping.h）
         gravity_obs_motion_enable_ = get_bool("gravity_obs_motion_enable", true);
         gravity_obs_motion_sigma_deg_ = get_num("gravity_obs_motion_sigma_deg", 3.0);
         gravity_obs_motion_acc_dir_tol_deg_ = get_num("gravity_obs_motion_acc_dir_tol_deg", 10.0);
@@ -259,7 +273,7 @@ bool LaserMapping::LoadParamsFromYAML(const std::string &yaml_file) {
                   << gravity_obs_motion_window_s_ << " s，来自 LIO 速度差分)"
                   << ", 再对齐静止门限=" << gravity_obs_max_speed_mps_ << " m/s"
                   << ", every_n_scan=" << gravity_obs_every_n_scan_;
-        /// 个人修改（方案C，2026-10-02 第4次修复①）：行驶中的竖直锚（见 laser_mapping.h 里"第4次修复①"）
+        // 个人修改（方案C，2026-10-02 第4次修复①）：行驶中的竖直锚（见 laser_mapping.h 里"第4次修复①"）
         LOG(INFO) << "[方案C] gravity obs(行驶中竖直锚): enable=" << gravity_obs_motion_enable_
                   << ", sigma=" << gravity_obs_motion_sigma_deg_ << " deg, 方向散布门限="
                   << gravity_obs_motion_acc_dir_tol_deg_ << " deg, 判定\"在动\"的 |v| 门限="
@@ -304,9 +318,9 @@ bool LaserMapping::LoadParamsFromYAML(const std::string &yaml_file) {
     voxel_scan_.setLeafSize(filter_size_scan, filter_size_scan, filter_size_scan);
 
     offset_t_lidar_fixed_ = math::VecFromArray<double>(extrinT_);
-    /// 个人修改（2026-10-02，第 4 次修复③ 配套）：先把 yaml 读进来的 extrinsic_R 正交化。
-    ///   原因见 lightning_math.hpp::OrthonormalizeRotation() 的注释：yaml 里手写的 9 个数带
-    ///   ~1e-9 非正交误差，会被 Sophus 的 SO3(R) 前置检查直接 abort（实测本平台新外参 7.0e-9）。
+    // 个人修改（2026-10-02，第 4 次修复③ 配套）：先把 yaml 读进来的 extrinsic_R 正交化。
+    //   原因见 lightning_math.hpp::OrthonormalizeRotation() 的注释：yaml 里手写的 9 个数带
+    //   ~1e-9 非正交误差，会被 Sophus 的 SO3(R) 前置检查直接 abort（实测本平台新外参 7.0e-9）。
     {
         const Mat3d R_raw = math::MatFromArray<double>(extrinR_);
         offset_R_lidar_fixed_ = math::OrthonormalizeRotation(R_raw);
@@ -319,6 +333,12 @@ bool LaserMapping::LoadParamsFromYAML(const std::string &yaml_file) {
     }
 
     p_imu_->SetExtrinsic(offset_t_lidar_fixed_, offset_R_lidar_fixed_);
+    // 个人修改（2026-10-09 第6次修复，方案D）：加计比力方向符号（见 imu_processing.hpp::SetAccUpSign 注释）。
+    //   必须在 IMU 初始化之前设定：IMUInit 用它定向 mean_acc_（⇒ 世界系 z 才是物理向上），
+    //   UndistortPcl 用它定向每帧比力（⇒ 预测项 v̇ = R·f + g 才不会被算成 -2g）。
+    p_imu_->SetAccUpSign(imu_acc_up_sign_);
+    LOG(INFO) << "个人修改（第6次修复）加计比力方向符号 fasterlio.imu_acc_up_sign = " << p_imu_->GetAccUpSign()
+              << "（+1 = 静止读数朝上[标准]；-1 = 该平台驱动反号[本平台实测]）";
     p_imu_->SetGyrCov(Vec3d(gyr_cov, gyr_cov, gyr_cov));
     p_imu_->SetAccCov(Vec3d(acc_cov, acc_cov, acc_cov));
     p_imu_->SetGyrBiasCov(Vec3d(b_gyr_cov, b_gyr_cov, b_gyr_cov));
@@ -357,39 +377,55 @@ void LaserMapping::TryInitVehicleFrameFromGravity() {
               << " (|a| = " << mean_acc.norm() << "), 车头轴 = " << vehicle_imu_forward_axis_ << "\nR_vehicle_imu =\n"
               << R;
 
-    /// 个人修改（方案C，2026-10-02 第4次修复③）：【外参 up 方向自检】。
-    ///   背景：fasterlio.extrinsic_R 描述的是"雷达系→IMU 系"的【单元内部】固定关系（同一台 Airy 里
-    ///     IMU 与雷达是刚体），其中"地面法向（雷达 +y，本 bag 实测地面 ⊥ 雷达 +y 在 0.24~0.40° 内）"
-    ///     应当映射到"IMU 系里的重力反方向"。若配置把这一步写错，就会出现：
-    ///       雷达看到的地面（倾斜坐标）≠ 世界系 z（由加计重力定义）⇒ 地图地面比世界 z 倾斜同角度
-    ///       ⇒ z 沿前进方向按 tan(该角) 漂移（本平台历史差 11.33° ⇒ 理论 0.20 m/m）。
-    ///   ⇒ 这里在启动瞬间（IMU 静止窗口均值可得）就把这个角算出来并打印：
-    ///       > 0.4°：WARNING 提示外参"单元内部朝向"与实物不符（改 fasterlio.extrinsic_R 后重跑复核）；
-    ///       ≤ 0.4°：INFO 通过。
-    ///   注意：本自检只读、不修改任何配置/状态（外参仍由 yaml 决定，便于复现与对比）。
+    // 个人修改（方案C，2026-10-02 第4次修复③）：【外参 up 方向自检】。
+    //   背景：fasterlio.extrinsic_R 描述的是"雷达系→IMU 系"的【单元内部】固定关系（同一台 Airy 里
+    //     IMU 与雷达是刚体），其中"地面法向（雷达 +y，本 bag 实测地面 ⊥ 雷达 +y 在 0.24~0.40° 内）"
+    //     应当映射到"IMU 系里的重力反方向"。若配置把这一步写错，就会出现：
+    //       雷达看到的地面（倾斜坐标）≠ 世界系 z（由加计重力定义）⇒ 地图地面比世界 z 倾斜同角度
+    //       ⇒ z 沿前进方向按 tan(该角) 漂移（本平台历史差 11.33° ⇒ 理论 0.20 m/m）。
+    //   ⇒ 这里在启动瞬间（IMU 静止窗口均值可得）就把这个角算出来并打印：
+    //       > 0.4°：WARNING 提示外参"单元内部朝向"与实物不符（改 fasterlio.extrinsic_R 后重跑复核）；
+    //       ≤ 0.4°：INFO 通过。
+    //   注意：本自检只读、不修改任何配置/状态（外参仍由 yaml 决定，便于复现与对比）。
     if (mean_acc.allFinite() && mean_acc.norm() > 1e-6) {
         const Vec3d up_meas = mean_acc.normalized();                              // IMU 系实测"上"（静止窗口均值）
-        /// 个人修改（2026-10-02 第5次修复）：参照向量改为【雷达系实测路面法向】ground_normal_lidar_。
-        ///   第4次修复用的是硬编码的雷达 +y（= (0,1,0)）：本平台雷达单元相对重力是【倾斜安装】的
-        ///   （+y 与实测路面法向差 10.590°）⇒ 用 +y 当参照等价于把"路面"拧 10.59° ⇒ 地图地面与墙
-        ///   整体刚性倾斜、z 沿前进方向按 tan(10.6°)=0.187 m/m 漂移（4 次修复后 val_4th_b 实测地面
-        ///   倾角正是 10.602°）。正确判据：angle(R·n_l, a0) —— R 把"看到的路面法向"映射到"加计竖直"
-        ///   时，地图地面才与世界系 z 一致。
+        // 个人修改（2026-10-02 第5次修复）：参照向量改为【雷达系实测路面法向】ground_normal_lidar_。
+        //   第4次修复用的是硬编码的雷达 +y（= (0,1,0)）：本平台雷达单元相对重力是【倾斜安装】的
+        //   （+y 与实测路面法向差 10.590°）⇒ 用 +y 当参照等价于把"路面"拧 10.59° ⇒ 地图地面与墙
+        //   整体刚性倾斜、z 沿前进方向按 tan(10.6°)=0.187 m/m 漂移（4 次修复后 val_4th_b 实测地面
+        //   倾角正是 10.602°）。正确判据：angle(R·n_l, a0) —— R 把"看到的路面法向"映射到"加计竖直"
+        //   时，地图地面才与世界系 z 一致。
         const Vec3d up_cfg = (offset_R_lidar_fixed_ * ground_normal_lidar_).normalized();  // 标定参照下的"上"
         const Vec3d up_cfg_y = (offset_R_lidar_fixed_ * Vec3d(0, 1, 0)).normalized();     // 诊断：R·(+y)
         const double cos_up = std::min(1.0, std::max(-1.0, up_cfg.dot(up_meas)));
         const double cos_up_y = std::min(1.0, std::max(-1.0, up_cfg_y.dot(up_meas)));
         extrinsic_up_check_deg_ = std::acos(cos_up) * 180.0 / M_PI;
         const double mount_tilt_deg = std::acos(cos_up_y) * 180.0 / M_PI;  // = 单元相对重力的安装倾角
-        if (extrinsic_up_check_deg_ > 0.4) {
+        // 个人修改（2026-10-09 第6次修复，方案D）：判据分级。
+        //   背景：修订前用 0.4° 单一阈值，实测【真实地面与重力的夹角】常有零点几度~数度（地面本身有坡度、
+        //   法向拟合偏差、狗站得不平），会被一律报成"外参写错、请重算 extrinsic_R"，属误报。
+        //   现在：> 3° 才判为外参/参照向量写错（历史两次真错分别是 10.59°、21.93°、137.9°，都能抓到）；
+        //   0.4°~3° 打印 INFO 说明这是"地面/拟合残差"，不是外参错误。
+        constexpr double kUpCheckTolDeg = 0.4;    // ≤ 该值视为"精确通过"
+        constexpr double kUpCheckSlopeDeg = 3.0;  // > 该值才判为外参/参照向量错误
+        if (extrinsic_up_check_deg_ > kUpCheckSlopeDeg) {
             LOG(WARNING) << "个人修改（第5次修复）【外参 up 方向自检(路面法向参照)】不一致：fasterlio.extrinsic_R 把"
                          << "雷达系路面法向 " << ground_normal_lidar_.transpose() << " 映射到 IMU 的 "
                          << up_cfg.transpose() << "，而 IMU 静止窗口实测竖直 = " << up_meas.transpose()
                          << "，相差 " << extrinsic_up_check_deg_ << " deg ⇒ 雷达看到的地面与世界系 z 差同角度"
-                         << "（地图地面会倾斜、z 会沿前进方向按 tan 漂移）。请按 config/default_airy96.yaml 里"
-                         << " 2026-10-02 第5次修复的注释重算 extrinsic_R（标定方程 R·n_l = a0）。"
+                         << "（地图地面会倾斜、z 会沿前进方向按 tan 漂移）。请检查 fasterlio.extrinsic_R 与"
+                         << " fasterlio.ground_normal_lidar 是否都是本平台的实测值（标定方程 R·n_l = a0）；"
+                         << "若两者的写法与平台不符（例如照抄了其它车的 extrinsic_R），请按本平台重标。"
                          << "★不要改按雷达 +y：本平台 R·(+y) 与实测竖直差 " << mount_tilt_deg
-                         << " deg，那是【单元安装倾角】，属正常现象。";
+                         << " deg，那是【单元安装倾角 / 雷达安装姿态】，属正常现象。";
+        } else if (extrinsic_up_check_deg_ > kUpCheckTolDeg) {
+            LOG(INFO) << "个人修改（第6次修复）【外参 up 方向自检(路面法向参照)】通过（小残差）：R 把雷达系路面法向 "
+                      << ground_normal_lidar_.transpose() << " 映射为 " << up_cfg.transpose() << "，与实测竖直 "
+                      << up_meas.transpose() << " 相差 " << extrinsic_up_check_deg_ << " deg（≤ " << kUpCheckSlopeDeg
+                      << "° ⇒ 不是外参错误）。该零点几度~数度的残差是【地面本身与重力的夹角（坡度）/ 平面拟合偏差 /"
+                      << " 建标定时车没站平】—— 地面法向取自点云、竖直取自加计，两者物理上不必严格重合；"
+                      << "若想要 ≤0.4° 的\"精确通过\"，请在【平坦地面】上静止重测 ground_normal_lidar。"
+                      << "（诊断：R·(+y) 与该竖直差 " << mount_tilt_deg << " deg = 单元安装倾角，正常）";
         } else {
             LOG(INFO) << "个人修改（第5次修复）【外参 up 方向自检(路面法向参照)】通过：R 把雷达系路面法向 "
                       << ground_normal_lidar_.transpose() << " 映射为 " << up_cfg.transpose()
@@ -451,9 +487,9 @@ void LaserMapping::AccAsGravityObsModel(NavState &s, ESKF::CustomObservationMode
         return;
     }
 
-    /// 个人修改（方案C，2026-10-02 修正）：用【当前 scan 窗口的均值】而不是最后一个采样。
-    ///   实测：单采样的 |ω| 很容易超过低动态门限（表中 0.238 rad/s），导致重力观测几乎每帧被跳过、
-    ///   形同虚设（日志里 d_rot 只有 1e-4 度）；窗口均值（10~20 个采样）把噪声降到 ~1/4。
+    // 个人修改（方案C，2026-10-02 修正）：用【当前 scan 窗口的均值】而不是最后一个采样。
+    //   实测：单采样的 |ω| 很容易超过低动态门限（表中 0.238 rad/s），导致重力观测几乎每帧被跳过、
+    //   形同虚设（日志里 d_rot 只有 1e-4 度）；窗口均值（10~20 个采样）把噪声降到 ~1/4。
     Vec3d a_body;
     Vec3d w_body;
     double acc_dir_spread_deg = 0.0;
@@ -464,8 +500,8 @@ void LaserMapping::AccAsGravityObsModel(NavState &s, ESKF::CustomObservationMode
         return;
     }
 
-    /// 个人修改（方案C，2026-10-02 加固）：窗口太短（采样太少）时"方向散布"没有统计意义（单采样恒为 0），
-    ///   此时不用它做判定，也不施加观测，避免把偶然的单点当成"静止"。
+    // 个人修改（方案C，2026-10-02 加固）：窗口太短（采样太少）时"方向散布"没有统计意义（单采样恒为 0），
+    //   此时不用它做判定，也不施加观测，避免把偶然的单点当成"静止"。
     if (measures_.imu_.size() < 5) {
         return;
     }
@@ -473,28 +509,28 @@ void LaserMapping::AccAsGravityObsModel(NavState &s, ESKF::CustomObservationMode
     const double acc_rel = std::fabs(a_body.norm() / G_m_s2 - 1.0);
     const double gyr_norm = w_body.norm();
 
-    /// =============================================================================================
-    /// 个人修改（方案C，2026-10-02 第4次修复①）：【行驶中的竖直锚】—— 本次 roll 漂移的根治点。
-    ///
-    ///   原实现只有一套门限（含"窗口比力方向散布 ≤ 3°"），实测在【车一动】时几乎恒被撞穿：
-    ///     日志 `gravity obs skipped (dynamic): |a|/g-1 = 0.0057, |w| = 0.0047 rad/s, 方向散布 = 3.20 deg`
-    ///     ⇒ 本函数返回 valid_ = false ⇒ ESKF 把这次更新整体回滚（日志表现为 d_rot = 0 deg，
-    ///       而同一时刻"世界系夹角(无ba) = 4.77°"）⇒ 行驶全程姿态没有绝对竖直参考。
-    ///   后果（本 bag 实测）：陀螺零偏（bg_z = 0.0416 rad/s = 2.39°/s，正是 roll 轴）在运动中可被
-    ///     重新随机游走（b_gyr_cov = 5e-4）⇒ roll 从 0 积到 +18.97°（同段陀螺证明车体只动 ≤0.79°）
-    ///     ⇒ 世界系倾斜 ⇒ z 沿路径下弓 1.37 m；一停车重力观测重新生效，|z| 又回到 0.026 m。
-    ///
-    ///   现在按"车是否在动"选两套门限：
-    ///     · 静止/准静止（|v| ≤ gravity_obs_motion_min_speed_mps_）：沿用严格门限（σ = 1.5°）；
-    ///     · 行驶中：必须【能证明此刻比力 ≈ 纯重力】才施加（σ = 3.0°，更软）：
-    ///         ① | |a|/g-1 | ≤ acc_tol、② |ω| ≤ gyr_tol、③ 平动加速度 ≤ motion_acc_tol（**必须有效**）、
-    ///         ④ 方向散布 ≤ gravity_obs_motion_acc_dir_tol_deg_（放宽到 10°；振动是随机的，
-    ///            窗口均值误差 ≪ 散布本身，而"系统性假重力"由③负责挡）。
-    ///       ③ 是关键：恒定的加/减速或转弯侧向加速度会造出 15° 级假重力，而 |a|、|ω|、方向散布
-    ///       三项全都看不出来（见 UpdateMotionAccEstimate 的说明）；LIO 速度差分与加计无关，能看出来。
-    ///   ★安全性：所有门限同时满足才施加，且 σ 更大（更软）+ 仍远弱于 LiDAR（信息量差 3 个数量级）
-    ///     ⇒ 最坏情况也只是"每帧 2~3% 的慢修正"，不会与 LiDAR 抢主导权、不会突变。
-    /// =============================================================================================
+    // =============================================================================================
+    // 个人修改（方案C，2026-10-02 第4次修复①）：【行驶中的竖直锚】—— 本次 roll 漂移的根治点。
+    //
+    //   原实现只有一套门限（含"窗口比力方向散布 ≤ 3°"），实测在【车一动】时几乎恒被撞穿：
+    //     日志 `gravity obs skipped (dynamic): |a|/g-1 = 0.0057, |w| = 0.0047 rad/s, 方向散布 = 3.20 deg`
+    //     ⇒ 本函数返回 valid_ = false ⇒ ESKF 把这次更新整体回滚（日志表现为 d_rot = 0 deg，
+    //       而同一时刻"世界系夹角(无ba) = 4.77°"）⇒ 行驶全程姿态没有绝对竖直参考。
+    //   后果（本 bag 实测）：陀螺零偏（bg_z = 0.0416 rad/s = 2.39°/s，正是 roll 轴）在运动中可被
+    //     重新随机游走（b_gyr_cov = 5e-4）⇒ roll 从 0 积到 +18.97°（同段陀螺证明车体只动 ≤0.79°）
+    //     ⇒ 世界系倾斜 ⇒ z 沿路径下弓 1.37 m；一停车重力观测重新生效，|z| 又回到 0.026 m。
+    //
+    //   现在按"车是否在动"选两套门限：
+    //     · 静止/准静止（|v| ≤ gravity_obs_motion_min_speed_mps_）：沿用严格门限（σ = 1.5°）；
+    //     · 行驶中：必须【能证明此刻比力 ≈ 纯重力】才施加（σ = 3.0°，更软）：
+    //         ① | |a|/g-1 | ≤ acc_tol、② |ω| ≤ gyr_tol、③ 平动加速度 ≤ motion_acc_tol（**必须有效**）、
+    //         ④ 方向散布 ≤ gravity_obs_motion_acc_dir_tol_deg_（放宽到 10°；振动是随机的，
+    //            窗口均值误差 ≪ 散布本身，而"系统性假重力"由③负责挡）。
+    //       ③ 是关键：恒定的加/减速或转弯侧向加速度会造出 15° 级假重力，而 |a|、|ω|、方向散布
+    //       三项全都看不出来（见 UpdateMotionAccEstimate 的说明）；LIO 速度差分与加计无关，能看出来。
+    //   ★安全性：所有门限同时满足才施加，且 σ 更大（更软）+ 仍远弱于 LiDAR（信息量差 3 个数量级）
+    //     ⇒ 最坏情况也只是"每帧 2~3% 的慢修正"，不会与 LiDAR 抢主导权、不会突变。
+    // =============================================================================================
     const double speed = s.vel_.allFinite() ? s.vel_.norm() : 0.0;
     const bool moving = speed > gravity_obs_motion_min_speed_mps_;
 
@@ -506,8 +542,8 @@ void LaserMapping::AccAsGravityObsModel(NavState &s, ESKF::CustomObservationMode
             gravity_obs_skipped_++;
             return;
         }
-        /// ③ 平动加速度门限（LIO 速度差分）：历史不足一个基线（motion_acc_valid_ = false）时也【不施加】——
-        ///    那时没有任何独立手段证明"比力 = 纯重力"，宁可这一帧不给锚。
+        // ③ 平动加速度门限（LIO 速度差分）：历史不足一个基线（motion_acc_valid_ = false）时也【不施加】——
+        //    那时没有任何独立手段证明"比力 = 纯重力"，宁可这一帧不给锚。
         if (!motion_acc_valid_ || motion_acc_est_ > gravity_obs_motion_acc_tol_) {
             gravity_obs_last_mode_ = 0;
             gravity_obs_skipped_++;
@@ -521,8 +557,8 @@ void LaserMapping::AccAsGravityObsModel(NavState &s, ESKF::CustomObservationMode
         dir_tol_deg = gravity_obs_motion_acc_dir_tol_deg_;
     }
 
-    /// 个人修改（方案C，2026-10-02 加固）：除幅值与角速度外，还必须要求【窗口内比力方向稳定】
-    ///   （否则横向加速度的"假重力"会把姿态带歪，实测可偏 15°）
+    // 个人修改（方案C，2026-10-02 加固）：除幅值与角速度外，还必须要求【窗口内比力方向稳定】
+    //   （否则横向加速度的"假重力"会把姿态带歪，实测可偏 15°）
     if (acc_rel > gravity_obs_acc_tol_ || gyr_norm > gravity_obs_gyr_tol_ || acc_dir_spread_deg > dir_tol_deg) {
         gravity_obs_last_mode_ = 0;
         gravity_obs_skipped_++;
@@ -547,12 +583,12 @@ void LaserMapping::AccAsGravityObsModel(NavState &s, ESKF::CustomObservationMode
     obs.lidar_residual_mean_ = r.norm();
     obs.valid_ = true;
 
-    /// 个人修改（方案C，2026-10-02 第4次修复①）：记下本次施加的是哪一套门限 + 计数，便于验收
-    ///   （验收要求：log 里能看到"行驶中"也在施加竖直锚，而不是全程只有静止段才施加）。
+    // 个人修改（方案C，2026-10-02 第4次修复①）：记下本次施加的是哪一套门限 + 计数，便于验收
+    //   （验收要求：log 里能看到"行驶中"也在施加竖直锚，而不是全程只有静止段才施加）。
     gravity_obs_last_mode_ = moving ? 2 : 1;
     if (moving) {
         gravity_obs_applied_motion_++;
-        /// 当前"姿态所定义的世界系与重力"的夹角（与 CheckGravityAlignment 同一算法：夹紧后再 acos）
+        // 当前"姿态所定义的世界系与重力"的夹角（与 CheckGravityAlignment 同一算法：夹紧后再 acos）
         const double cos_tilt_here = std::min(1.0, std::max(-1.0, up_world.normalized().dot(Vec3d(0, 0, 1))));
         LOG_EVERY_N(INFO, 100) << "[方案C] gravity obs(行驶中竖直锚) 已施加: |v| = " << speed
                                << " m/s, LIO 平动加速度 = " << motion_acc_est_ << " m/s², |a|/g-1 = " << acc_rel
@@ -597,7 +633,7 @@ double LaserMapping::CheckGravityAlignment(const NavState &s, bool print) {
     Vec3d w_body;
     double acc_dir_spread_deg = 0.0;
     const bool has_window = GetWindowImuMean(&a_body, &w_body, &acc_dir_spread_deg);
-    /// 采样太少时"方向散布"没有统计意义（单采样恒为 0），此时不给自检数字
+    // 采样太少时"方向散布"没有统计意义（单采样恒为 0），此时不给自检数字
     const bool long_enough = has_window && measures_.imu_.size() >= 5;
     bool quasi_static = long_enough && a_body.allFinite() && a_body.norm() > 1e-3;
     if (quasi_static) {
@@ -606,9 +642,9 @@ double LaserMapping::CheckGravityAlignment(const NavState &s, bool print) {
                         acc_dir_spread_deg <= gravity_obs_acc_dir_tol_deg_);
     }
 
-    /// 个人修改（方案C，2026-10-02 第3次加固）：自检还要求【平动加速度小】—— 用 LIO 速度差分（与加计无关）。
-    ///   加计自己的三个门限都看不出"恒定的加/减速"：本 bag 实测在真正静止时读到 0.26°，
-    ///   而同一次运行里车辆加速的那一瞬间同一个自检读到 15.58°（差 60 倍）⇒ 必须先剔掉这种样本。
+    // 个人修改（方案C，2026-10-02 第3次加固）：自检还要求【平动加速度小】—— 用 LIO 速度差分（与加计无关）。
+    //   加计自己的三个门限都看不出"恒定的加/减速"：本 bag 实测在真正静止时读到 0.26°，
+    //   而同一次运行里车辆加速的那一瞬间同一个自检读到 15.58°（差 60 倍）⇒ 必须先剔掉这种样本。
     const bool motion_ok = !motion_acc_valid_ || motion_acc_est_ <= gravity_obs_motion_acc_tol_;
     if (quasi_static && !motion_ok) {
         quasi_static = false;
@@ -630,16 +666,16 @@ double LaserMapping::CheckGravityAlignment(const NavState &s, bool print) {
         return gravity_misalign_deg_;
     }
 
-    /// 无 ba 的竖直方向：准静态窗口里 |a| ≈ g 且方向稳定 ⇒ 原始比力方向 = 重力方向（干净、可作判据）
+    // 无 ba 的竖直方向：准静态窗口里 |a| ≈ g 且方向稳定 ⇒ 原始比力方向 = 重力方向（干净、可作判据）
     const Vec3d up_body = a_body.normalized();
     const Vec3d up_world = (s.rot_ * up_body).normalized();
     const double tilt_deg = AngleDegBetween(up_world, Vec3d(0, 0, 1));
-    /// 个人修改（方案C，2026-10-02 第3次加固）：这里【不再】把单帧值写进 gravity_misalign_deg_。
-    ///   原因：gravity_misalign_deg_ 现在只表示【累积均值】（"世界系再对齐"与各处日志的判定依据），
-    ///   而单帧值即使过了所有门限也可能被瞬时冲击污染（本 bag 实测有 15.58° 的单帧值与真值 0.26°
-    ///   差 60 倍）。混用会让日志自相矛盾、误导排查。
+    // 个人修改（方案C，2026-10-02 第3次加固）：这里【不再】把单帧值写进 gravity_misalign_deg_。
+    //   原因：gravity_misalign_deg_ 现在只表示【累积均值】（"世界系再对齐"与各处日志的判定依据），
+    //   而单帧值即使过了所有门限也可能被瞬时冲击污染（本 bag 实测有 15.58° 的单帧值与真值 0.26°
+    //   差 60 倍）。混用会让日志自相矛盾、误导排查。
 
-    /// 带 ba 的同项（仅诊断）：= 真实世界系倾斜 ⊕ ba 等效倾角，绝不能单独当"世界系歪了"用
+    // 带 ba 的同项（仅诊断）：= 真实世界系倾斜 ⊕ ba 等效倾角，绝不能单独当"世界系歪了"用
     const Vec3d up_body_ba = (a_body - s.ba_).normalized();
     const double tilt_ba_deg = AngleDegBetween((s.rot_ * up_body_ba).normalized(), Vec3d(0, 0, 1));
     const double ba_equiv_deg = AngleDegBetween(up_body, up_body_ba);
@@ -695,20 +731,23 @@ bool LaserMapping::GetWindowImuMean(Vec3d *acc_mean, Vec3d *gyr_mean, double *ac
     }
 
     const double n = static_cast<double>(measures_.imu_.size());
-    a *= p_imu_->GetAccScaleFactor() / n;
+    // 个人修改（2026-10-09 第6次修复，方案D）：先按 imu_acc_up_sign 定向（静止时朝上），与 IMUInit() 的
+    //   世界系定义一致；否则本平台的重力观测/自检/世界系再对齐会把 -g 当成竖直参考（差 180°）。
+    const double up_sign = p_imu_->GetAccUpSign();
+    a *= up_sign * p_imu_->GetAccScaleFactor() / n;
     w /= n;
 
-    /// 陀螺零偏只为门限判定服务（零偏不该占掉"低动态"的额度）
+    // 陀螺零偏只为门限判定服务（零偏不该占掉"低动态"的额度）
     const Vec3d bg = kf_.GetX().bg_;
     w -= bg;
 
-    /// 个人修改（方案C，2026-10-02 加固）：方向散布 = max_i angle( â_i , â_mean )
+    // 个人修改（方案C，2026-10-02 加固）：方向散布 = max_i angle( â_i , â_mean )
     if (acc_dir_spread_deg != nullptr) {
         double spread = 0.0;
         if (a.norm() > 1e-6) {
             const Vec3d a_dir = a.normalized();
             for (const auto &imu : measures_.imu_) {
-                const Vec3d ai = imu->linear_acceleration;
+                const Vec3d ai = up_sign * imu->linear_acceleration;  // 个人修改（方案D）：与 a 同符号，否则散布恒为 180°
                 if (ai.norm() < 1e-6) {
                     continue;
                 }
@@ -753,11 +792,11 @@ void LaserMapping::UpdateMotionAccEstimate(const NavState &s) {
 
     gravity_speed_hist_.emplace_back(t, s.vel_);
     const double baseline = std::max(0.2, gravity_obs_motion_window_s_);
-    /// 保证前端至少留 1 个"基线前"的样本：只在前面还有更老样本时才弹掉
+    // 保证前端至少留 1 个"基线前"的样本：只在前面还有更老样本时才弹掉
     while (gravity_speed_hist_.size() > 2 && (t - gravity_speed_hist_.front().first) > baseline) {
         gravity_speed_hist_.pop_front();
     }
-    /// 历史维护：避免长时间运行后无限增长（保留 5 s 足够）
+    // 历史维护：避免长时间运行后无限增长（保留 5 s 足够）
     while (!gravity_speed_hist_.empty() && (t - gravity_speed_hist_.front().first) > 5.0) {
         gravity_speed_hist_.pop_front();
     }
@@ -772,7 +811,7 @@ void LaserMapping::UpdateMotionAccEstimate(const NavState &s) {
 }
 
 void LaserMapping::AccumulateGravityDirection(const NavState &s) {
-    /// 个人修改（方案C，2026-10-02 第3次加固）：先更新平动加速度估计（每帧一次），供下面各门限使用
+    // 个人修改（方案C，2026-10-02 第3次加固）：先更新平动加速度估计（每帧一次），供下面各门限使用
     UpdateMotionAccEstimate(s);
 
     Vec3d a_body;
@@ -786,16 +825,16 @@ void LaserMapping::AccumulateGravityDirection(const NavState &s) {
     }
 
     const double acc_rel = std::fabs(a_body.norm() / G_m_s2 - 1.0);
-    /// 个人修改（方案C，2026-10-02 加固）：同样加上"窗口内比力方向稳定"判据 ——
-    ///   累积样本是【世界系再对齐】的唯一依据，一旦被横向加速度污染就会把好地图转歪。
+    // 个人修改（方案C，2026-10-02 加固）：同样加上"窗口内比力方向稳定"判据 ——
+    //   累积样本是【世界系再对齐】的唯一依据，一旦被横向加速度污染就会把好地图转歪。
     if (acc_rel > gravity_obs_acc_tol_ || w_body.norm() > gravity_obs_gyr_tol_ ||
         acc_dir_spread_deg > gravity_obs_acc_dir_tol_deg_) {
         return;
     }
 
-    /// 个人修改（方案C，2026-10-02 第3次加固）：平动加速度门限（来自 LIO 速度差分，与加计无关）。
-    ///   前三项判据都看不出"恒定的加/减速"（见 UpdateMotionAccEstimate 的说明），而它恰好能造出 15° 的假重力；
-    ///   本函数的结果会【刚性旋转整张地图】，所以这里必须最严格。
+    // 个人修改（方案C，2026-10-02 第3次加固）：平动加速度门限（来自 LIO 速度差分，与加计无关）。
+    //   前三项判据都看不出"恒定的加/减速"（见 UpdateMotionAccEstimate 的说明），而它恰好能造出 15° 的假重力；
+    //   本函数的结果会【刚性旋转整张地图】，所以这里必须最严格。
     if (motion_acc_valid_ && motion_acc_est_ > gravity_obs_motion_acc_tol_) {
         LOG_EVERY_N(INFO, 20) << "[方案C] 重力样本跳过（平动加速度 " << motion_acc_est_ << " m/s² > "
                               << gravity_obs_motion_acc_tol_ << " m/s²，来自 LIO 速度差分）：加计测的是比力，"
@@ -804,13 +843,13 @@ void LaserMapping::AccumulateGravityDirection(const NavState &s) {
         return;
     }
 
-    /// 个人修改（方案C，2026-10-02 第3次加固）：世界系再对齐只采信【已确认静止】的样本。
-    ///   平动加速度门限挡的是"加/减速"，但还有一类同样能造出十几度假重力的样本：运动中撞到坎/坑、
-    ///   车身侧倾过坎等【瞬时冲击】—— 它的 1 s 平均 |Δv| 可能很小（先加速后减速，净变化≈0）、|ω| 小、
-    ///   窗口内方向散布也小，于是能骗过前面所有门限（本 bag 实测就有 15.6° 的样本通过了全部四项）。
-    ///   而本函数的结果会【刚性旋转整张地图】⇒ 判定依据必须是"车真的停着、比力就是重力"这种铁样本；
-    ///   静止样本本来在每个建图任务的起步段都有，够用。|v| 取 LIO 世界系速度（与加计无关）。
-    ///   设成很大（如 100）可关闭本判据（不建议）。
+    // 个人修改（方案C，2026-10-02 第3次加固）：世界系再对齐只采信【已确认静止】的样本。
+    //   平动加速度门限挡的是"加/减速"，但还有一类同样能造出十几度假重力的样本：运动中撞到坎/坑、
+    //   车身侧倾过坎等【瞬时冲击】—— 它的 1 s 平均 |Δv| 可能很小（先加速后减速，净变化≈0）、|ω| 小、
+    //   窗口内方向散布也小，于是能骗过前面所有门限（本 bag 实测就有 15.6° 的样本通过了全部四项）。
+    //   而本函数的结果会【刚性旋转整张地图】⇒ 判定依据必须是"车真的停着、比力就是重力"这种铁样本；
+    //   静止样本本来在每个建图任务的起步段都有，够用。|v| 取 LIO 世界系速度（与加计无关）。
+    //   设成很大（如 100）可关闭本判据（不建议）。
     if (gravity_obs_max_speed_mps_ > 0.0 && s.vel_.norm() > gravity_obs_max_speed_mps_) {
         LOG_EVERY_N(INFO, 20) << "[方案C] 重力样本跳过（LIO 速度 " << s.vel_.norm() << " m/s > "
                               << gravity_obs_max_speed_mps_ << " m/s，车在动）：世界系再对齐只用【静止】样本，"
@@ -818,9 +857,9 @@ void LaserMapping::AccumulateGravityDirection(const NavState &s) {
         return;
     }
 
-    /// 个人修改（方案C，2026-10-02 加固②）：累积【未扣 ba 的原始比力方向】。
-    ///   本函数是世界系重力再对齐的【唯一依据】⇒ 绝不能被被污染的 ba 带偏（否则会把好地图整体旋转 7~13°；
-    ///   本 bag 实测差 1.6 ms 就真会按 12.9° 转地图）。准静态窗口里 |a| ≈ g ⇒ 原始比力方向 = 重力方向。
+    // 个人修改（方案C，2026-10-02 加固②）：累积【未扣 ba 的原始比力方向】。
+    //   本函数是世界系重力再对齐的【唯一依据】⇒ 绝不能被被污染的 ba 带偏（否则会把好地图整体旋转 7~13°；
+    //   本 bag 实测差 1.6 ms 就真会按 12.9° 转地图）。准静态窗口里 |a| ≈ g ⇒ 原始比力方向 = 重力方向。
     const Vec3d up_body = a_body.normalized();
     const Vec3d up_world = (s.rot_ * up_body).normalized();
     if (!up_world.allFinite()) {
@@ -832,7 +871,7 @@ void LaserMapping::AccumulateGravityDirection(const NavState &s) {
 
     gravity_misalign_deg_ = AngleDegBetween(up_world, Vec3d(0, 0, 1));
 
-    /// 诊断：带 ba 的版本偏了多少（偏得多 ⇒ ba 被污染，日志里能看出"假报警"的来源）
+    // 诊断：带 ba 的版本偏了多少（偏得多 ⇒ ba 被污染，日志里能看出"假报警"的来源）
     const Vec3d up_body_ba = (a_body - s.ba_).normalized();
     const double ba_equiv_deg = AngleDegBetween(up_body, up_body_ba);
     if (ba_equiv_deg > gravity_obs_ba_warn_deg_) {
@@ -898,11 +937,11 @@ void LaserMapping::TryRealignWorldFrameToGravity() {
         return;
     }
 
-    /// 个人修改（方案C）：只在【建图】模式下做世界系再对齐。
-    ///   理由：定位端（is_in_slam_mode_=false）不保存关键帧（all_keyframes_ 为空），
-    ///   它的 iVox 局部地图是由每帧 scan 增量灌进去的；整体旋转位姿会让"位姿与局部地图"错位，
-    ///   而定位端的 LIO 世界系只是【里程计基准】（对外只用相对量 delta），本来就不需要竖直。
-    ///   定位端的绝对参考是地图文件，由 CheckMapLevel() 负责自检。
+    // 个人修改（方案C）：只在【建图】模式下做世界系再对齐。
+    //   理由：定位端（is_in_slam_mode_=false）不保存关键帧（all_keyframes_ 为空），
+    //   它的 iVox 局部地图是由每帧 scan 增量灌进去的；整体旋转位姿会让"位姿与局部地图"错位，
+    //   而定位端的 LIO 世界系只是【里程计基准】（对外只用相对量 delta），本来就不需要竖直。
+    //   定位端的绝对参考是地图文件，由 CheckMapLevel() 负责自检。
     if (!options_.is_in_slam_mode_) {
         world_frame_realigned_ = true;
         LOG(INFO) << "[方案C] 当前为定位端 LIO（is_in_slam_mode=0）：世界系只是里程计基准，跳过重力再对齐"
@@ -910,16 +949,16 @@ void LaserMapping::TryRealignWorldFrameToGravity() {
         return;
     }
 
-    /// 建图模式下，本函数在 Run() 里位于 MakeKF() 之前 ⇒ 第一帧时关键帧列表还是空的。
-    /// 注意：这里【不能】置位 world_frame_realigned_，否则第一帧就把再对齐永久关掉了。
+    // 建图模式下，本函数在 Run() 里位于 MakeKF() 之前 ⇒ 第一帧时关键帧列表还是空的。
+    // 注意：这里【不能】置位 world_frame_realigned_，否则第一帧就把再对齐永久关掉了。
     if (all_keyframes_.empty()) {
         return;
     }
 
-    /// 个人修改（方案C，2026-10-02 第3次加固）：先用【累积的均值方向】算出判定用的夹角，
-    ///   再做窗口/样本数检查 —— 这样所有日志打印的都是"真正参与判定的那个数"。
-    ///   原实现把"最近一次自检值"（单个样本，可能被平动加速度污染成 15.6°）打印出来，
-    ///   而实际判定用的是累积均值，两者混在一起会让人误读（本 bag 实测就差 60 倍）。
+    // 个人修改（方案C，2026-10-02 第3次加固）：先用【累积的均值方向】算出判定用的夹角，
+    //   再做窗口/样本数检查 —— 这样所有日志打印的都是"真正参与判定的那个数"。
+    //   原实现把"最近一次自检值"（单个样本，可能被平动加速度污染成 15.6°）打印出来，
+    //   而实际判定用的是累积均值，两者混在一起会让人误读（本 bag 实测就差 60 倍）。
     const Vec3d up_world = gravity_dir_world_sum_.normalized();
     if (!up_world.allFinite() || up_world.norm() < 1e-6) {
         return;
@@ -928,7 +967,7 @@ void LaserMapping::TryRealignWorldFrameToGravity() {
     const double cos_tilt = std::min(1.0, std::max(-1.0, up_world.dot(Vec3d(0, 0, 1))));
     const double tilt_deg = std::acos(cos_tilt) * 180.0 / M_PI;
 
-    /// 超出允许的"早期窗口" ⇒ 放弃再对齐（只保留自检日志），避免对已成形地图做整体改动
+    // 超出允许的"早期窗口" ⇒ 放弃再对齐（只保留自检日志），避免对已成形地图做整体改动
     const double elapsed =
         (first_lidar_time_ > 0 && measures_.lidar_end_time_ > 0) ? (measures_.lidar_end_time_ - first_lidar_time_) : 0.0;
     if (kf_id_ > static_cast<unsigned long>(world_frame_realign_max_kf_id_) ||
@@ -964,8 +1003,8 @@ void LaserMapping::TryRealignWorldFrameToGravity() {
         return;
     }
 
-    /// 最小旋转：把"实测重力方向（世界系）"转到 +z —— 等价于同时旋转全体位姿/点云，
-    /// 地图形状与轨迹形状完全不变，只是把世界系基准扶正
+    // 最小旋转：把"实测重力方向（世界系）"转到 +z —— 等价于同时旋转全体位姿/点云，
+    // 地图形状与轨迹形状完全不变，只是把世界系基准扶正
     const Quatd q_fix = Quatd::FromTwoVectors(up_world, Vec3d(0, 0, 1));
     const Mat3d R_fix = q_fix.toRotationMatrix();
 
@@ -1039,16 +1078,36 @@ void LaserMapping::ProcessIMU(const lightning::IMUPtr &imu) {
     }
 
     if (p_imu_->IsIMUInited()) {
-        /// 更新最新imu状态
-        kf_imu_.Predict(timestamp - last_timestamp_imu_, p_imu_->Q_, imu->angular_velocity, imu->linear_acceleration);
+        // 个人修改（2026-10-09，DR 时间戳回退 ⇒ 定位卡住/移动不丝滑）：
+        //   ESKF::Predict() 内部只做 x_.timestamp_ += dt（增量时间），它隐含要求"kf_imu_ 当前时间
+        //   就是上一次传给它的时标基准"。但 Run() 末尾的 kf_imu_ = kf_ 会把时间基重置到雷达帧末
+        //   (pcl_end_time)，而这里传的 dt = 本帧IMU时标 - 上一帧IMU时标（IMU 时间轴上的增量）
+        //   ⇒ 时间基错位，DR 输出时间戳整体偏离真实 IMU 时标，甚至小于上一帧；
+        //   PGO::ProcessDR 判定"时间戳回退"后会丢弃该帧，连续丢弃就让高频定位输出整段停更
+        //   （实机表现：刷"当前DR定位的结果的时间戳应当比上一个时间戳数值大"的同时定位卡住）。
+        //   这里① 只在正向时间间隔内预测（避免用负 dt 把状态"倒推"）；
+        //        ② 每次预测后显式把状态时间对齐到当前 IMU 时标，
+        //           使 DR 时间戳恒等于 IMU 采样时标（与雷达/LO 同一时钟，可直接参与插值/外推）。
+        const double dt = timestamp - last_timestamp_imu_;
+        if (dt > 0) {
+            kf_imu_.Predict(dt, p_imu_->Q_, imu->angular_velocity,
+                            // 个人修改（2026-10-09 第6次修复，方案D）：kf_imu_ 的世界系与 kf_ 相同（z=物理上），
+                            //   因此这里喂给预测的比力必须与 IMUInit/UndistortPcl 用同一个符号，否则 v̇ 变成 -2g。
+                            p_imu_->GetAccUpSign() * imu->linear_acceleration);
+        } else {
+            LOG_EVERY_N(WARNING, 50) << "IMU 时间戳未前进(dt=" << dt << ")，本帧不做预测，仅同步时间基(累计 "
+                                     << google::COUNTER << " 次)";
+        }
+
+        kf_imu_.SetTime(timestamp);
 
         // LOG(INFO) << "newest wrt lidar: " << timestamp - kf_.GetX().timestamp_;
 
-        /// 更新ui
+        // 更新ui
         if (ui_) {
-            /// 个人修改（方案A+）：kf_imu_ 与 kf_ 同为"世界系下的 IMU 系位姿"，送 UI 前必须同样换算成
-            ///   车辆(base_link)系。否则每来一帧 IMU 状态就把 UI 里的车摆回 IMU 姿态
-            ///   （Airy 竖装表现为车绕 y 轴立起来 90°、pitch≈90°）。
+            // 个人修改（方案A+）：kf_imu_ 与 kf_ 同为"世界系下的 IMU 系位姿"，送 UI 前必须同样换算成
+            //   车辆(base_link)系。否则每来一帧 IMU 状态就把 UI 里的车摆回 IMU 姿态
+            //   （Airy 竖装表现为车绕 y 轴立起来 90°、pitch≈90°）。
             NavState state_vehicle = kf_imu_.GetX();
             state_vehicle.SetPose(vehicle_frame::ToVehiclePose(state_vehicle.GetPose()));
             ui_->UpdateNavState(state_vehicle);
@@ -1066,11 +1125,11 @@ bool LaserMapping::Run() {
         return false;
     }
 
-    /// IMU process, kf prediction, undistortion
+    // IMU process, kf prediction, undistortion
     p_imu_->Process(measures_, kf_, scan_undistort_);
 
-    /// 个人修改（方案A+）：auto 模式下，IMU 首次初始化完成的那一刻就用其重力方向定出车体安装旋转，
-    ///   保证后面所有车辆系输出（UI/日志/TF）从第一帧起就是对的（函数内部自带幂等判断）。
+    // 个人修改（方案A+）：auto 模式下，IMU 首次初始化完成的那一刻就用其重力方向定出车体安装旋转，
+    //   保证后面所有车辆系输出（UI/日志/TF）从第一帧起就是对的（函数内部自带幂等判断）。
     TryInitVehicleFrameFromGravity();
 
     if (scan_undistort_->empty() || (scan_undistort_ == nullptr)) {
@@ -1078,7 +1137,7 @@ bool LaserMapping::Run() {
         return false;
     }
 
-    /// the first scan
+    // the first scan
     if (flg_first_scan_) {
         LOG(INFO) << "first scan pts: " << scan_undistort_->size();
 
@@ -1100,20 +1159,20 @@ bool LaserMapping::Run() {
         skip_lidar_cnt_ = skip_lidar_cnt_ % skip_lidar_num_;
 
         if (skip_lidar_cnt_ != 0) {
-            /// 更新UI中的内容
+            // 更新UI中的内容
             if (ui_) {
-                /// 个人修改：UI 中的姿态统一换算到【车辆(base_link)系】，位置不变、只换旋转的参考系。
-                ///   T_w_vehicle = T_w_body * Mᵀ（M = R_vehicle_imu，见 common/vehicle_frame.h）
-                ///   否则 IMU 竖装(x=下,y=左,z=前)会让 UI 里画的"车"像绕 y 轴立起来 90°。
+                // 个人修改：UI 中的姿态统一换算到【车辆(base_link)系】，位置不变、只换旋转的参考系。
+                //   T_w_vehicle = T_w_body * Mᵀ（M = R_vehicle_imu，见 common/vehicle_frame.h）
+                //   否则 IMU 竖装(x=下,y=左,z=前)会让 UI 里画的"车"像绕 y 轴立起来 90°。
                 NavState state_vehicle = kf_.GetX();
                 state_vehicle.SetPose(vehicle_frame::ToVehiclePose(state_vehicle.GetPose()));
                 ui_->UpdateNavState(state_vehicle);
 
-                /// 个人修改：scan_undistort_ 是【雷达系】点云，必须用 T_w_lidar = T_w_body * T_imu_lidar 绘制。
-                ///   （原来直接把 IMU 姿态给了雷达系点云，整体差一个"雷达→IMU"外参，Airy 竖装雷达约 90°）
+                // 个人修改：scan_undistort_ 是【雷达系】点云，必须用 T_w_lidar = T_w_body * T_imu_lidar 绘制。
+                //   （原来直接把 IMU 姿态给了雷达系点云，整体差一个"雷达→IMU"外参，Airy 竖装雷达约 90°）
                 ui_->UpdateScan(scan_undistort_, vehicle_frame::ToLidarPose(kf_.GetX().GetPose(), T_imu_lidar_extrinsic()));
 
-                /// 个人修改：车的姿态单独用车辆系姿态给出（UI 内部 UpdateScan 已不再改写 newest_backend_pose_）
+                // 个人修改：车的姿态单独用车辆系姿态给出（UI 内部 UpdateScan 已不再改写 newest_backend_pose_）
                 ui_->UpdateBodyPose(vehicle_frame::ToVehiclePose(kf_.GetX().GetPose()));
             }
 
@@ -1133,7 +1192,7 @@ bool LaserMapping::Run() {
 
     flg_EKF_inited_ = (measures_.lidar_begin_time_ - first_lidar_time_) >= fasterlio::INIT_TIME;
 
-    /// downsample
+    // downsample
     voxel_scan_.setInputCloud(scan_undistort_);
     voxel_scan_.filter(*scan_down_body_);
 
@@ -1144,7 +1203,7 @@ bool LaserMapping::Run() {
     int cur_pts = scan_down_body_->size();
 
     if (cur_pts < (scan_undistort_->size() * 0.1) || cur_pts < options_.min_pts) {
-        /// 降采样太狠了,有效点数不够，用0.1分辨率代替
+        // 降采样太狠了,有效点数不够，用0.1分辨率代替
         // LOG(INFO) << "too few points, using 0.1 resol";
         auto v = voxel_scan_;
         v.setLeafSize(0.1, 0.1, 0.1);
@@ -1210,11 +1269,11 @@ bool LaserMapping::Run() {
 
     if (gravity_obs_enable_ && !measures_.imu_.empty() &&
         (gravity_obs_every_n_scan_ <= 1 || (scan_count_ % std::max(1, gravity_obs_every_n_scan_)) == 0)) {
-        /// 个人修改（方案C）：先给姿态协方差充气，否则这条"软观测"完全没作用 ——
-        ///   LiDAR 观测每帧把姿态协方差压到 ~0.03°（信息量 ~5e6），1.5° 的软观测增益只有 ~1e-4，
-        ///   单帧修正量 1e-4 度（实测就是这个数量级），等于没做。
-        ///   充气到 gravity_obs_prior_inflation_deg_（默认 0.5°）后增益约 0.1 ⇒ 每帧修正当前偏差的 10%，
-        ///   时间常数 ~1 s，既真正生效又不会突变（充的气也会被紧随其后的 LiDAR 观测重新收紧）。
+        // 个人修改（方案C）：先给姿态协方差充气，否则这条"软观测"完全没作用 ——
+        //   LiDAR 观测每帧把姿态协方差压到 ~0.03°（信息量 ~5e6），1.5° 的软观测增益只有 ~1e-4，
+        //   单帧修正量 1e-4 度（实测就是这个数量级），等于没做。
+        //   充气到 gravity_obs_prior_inflation_deg_（默认 0.5°）后增益约 0.1 ⇒ 每帧修正当前偏差的 10%，
+        //   时间常数 ~1 s，既真正生效又不会突变（充的气也会被紧随其后的 LiDAR 观测重新收紧）。
         {
             ESKF::CovType P = kf_.GetP();
             const double sigma_inflate = gravity_obs_prior_inflation_deg_ * M_PI / 180.0;
@@ -1233,9 +1292,9 @@ bool LaserMapping::Run() {
         Vec3d acc_mean;
         Vec3d gyr_mean;
         GetWindowImuMean(&acc_mean, &gyr_mean);
-        /// 个人修改（方案C，2026-10-02 加固②）：这一行同时给出【无 ba】与【带 ba】两个"世界系与重力夹角"。
-        ///   无 ba 的那个才是可信的世界系倾斜（准静态窗口里原始比力方向 = 重力方向）；
-        ///   两者差值 = ba 的等效倾角，|ba| 被机动污染到 ~1.2 m/s²（≈7°）时就会造出 4.9~12.9° 的假警报。
+        // 个人修改（方案C，2026-10-02 加固②）：这一行同时给出【无 ba】与【带 ba】两个"世界系与重力夹角"。
+        //   无 ba 的那个才是可信的世界系倾斜（准静态窗口里原始比力方向 = 重力方向）；
+        //   两者差值 = ba 的等效倾角，|ba| 被机动污染到 ~1.2 m/s²（≈7°）时就会造出 4.9~12.9° 的假警报。
         double tilt_noba_deg = 0.0;
         double tilt_ba_deg = 0.0;
         double ba_equiv_deg = 0.0;
@@ -1251,10 +1310,10 @@ bool LaserMapping::Run() {
                               << " deg (ba 等效倾角 " << ba_equiv_deg << " deg), ba = " << after.ba_.transpose()
                               << ", |a| = " << acc_mean.norm() << ", |w| = " << gyr_mean.norm() << ", 平动加速度 = "
                               << (motion_acc_valid_ ? motion_acc_est_ : 0.0) << " m/s²(LIO 差分)"
-                              /// 个人修改（方案C，2026-10-02 第4次修复①②）：模式 + bg。
-                              ///   · 模式 = "未施加(门限未过)" 且 d_rot = 0 而世界系夹角很大 ⇒ 姿态没有竖直锚
-                              ///     （这正是本次修复前的现象：行驶中方向散布 3.2° > 3° ⇒ valid_=false ⇒ 更新被回滚）；
-                              ///   · bg 是否恒定 = 修复②(禁止运动中随机游走零偏)是否生效的直接证据。
+                              // 个人修改（方案C，2026-10-02 第4次修复①②）：模式 + bg。
+                              //   · 模式 = "未施加(门限未过)" 且 d_rot = 0 而世界系夹角很大 ⇒ 姿态没有竖直锚
+                              //     （这正是本次修复前的现象：行驶中方向散布 3.2° > 3° ⇒ valid_=false ⇒ 更新被回滚）；
+                              //   · bg 是否恒定 = 修复②(禁止运动中随机游走零偏)是否生效的直接证据。
                               << ", 模式 = "
                               << (gravity_obs_last_mode_ == 2 ? "行驶中竖直锚"
                                                               : (gravity_obs_last_mode_ == 1 ? "准静止" : "未施加(门限未过)"))
@@ -1262,14 +1321,14 @@ bool LaserMapping::Run() {
                               << " 准静止=" << gravity_obs_applied_static_ << " 跳过=" << gravity_obs_skipped_ << ")";
     }
 
-    /// 世界系自检（默认每 50 帧打一次）：能看到世界系何时开始歪、歪了多少
+    // 世界系自检（默认每 50 帧打一次）：能看到世界系何时开始歪、歪了多少
     if ((scan_count_ % 50) == 0) {
         CheckGravityAlignment(state_point_, true);
     }
 
     TryRealignWorldFrameToGravity();
 
-    /// keyframes
+    // keyframes
     if (last_kf_ == nullptr) {
         MakeKF();
     } else {
@@ -1285,15 +1344,29 @@ bool LaserMapping::Run() {
         }
     }
 
-    /// 更新kf_for_imu
+    // 更新kf_for_imu
     kf_imu_ = kf_;
     if (!measures_.imu_.empty()) {
-        double t = measures_.imu_.back()->timestamp;
+        // 个人修改（2026-10-09，DR 时间戳回退 ⇒ 定位卡住/移动不丝滑）：
+        //   kf_imu_ = kf_ 之后状态时间 = 雷达帧末(pcl_end_time)，而 imu_buffer_ 里装的是
+        //   "sync 之后新到"的 IMU（时标都 > pcl_end_time）。原来基准 t 取 measures_.imu_.back()
+        //   （<= pcl_end_time）会让第一个 dt 偏大（把这段运动重复积分一次），且积分结束时状态时间
+        //   并不等于最新 IMU 时标 ⇒ DR 时间戳与 IMU 时间轴错位。
+        //   这里改为从"状态自身时间"出发逐个 IMU 递推，并在结束时把状态时间对齐到最新一帧 IMU 时标，
+        //   保证 kf_imu_ 的时间轴与 IMU 采样时标严格一致（DR 输出的时间戳因此单调且与雷达同一时钟）。
+        double t = kf_imu_.GetX().timestamp_;
         for (auto &imu : imu_buffer_) {
             double dt = imu->timestamp - t;
-            kf_imu_.Predict(dt, p_imu_->Q_, imu->angular_velocity, imu->linear_acceleration);
+            if (dt <= 0) {
+                continue;
+            }
+
+            // 个人修改（2026-10-09 第6次修复，方案D）：同 ProcessIMU，kf_imu_ 的世界系 z 朝上 ⇒ 比力要同符号
+            kf_imu_.Predict(dt, p_imu_->Q_, imu->angular_velocity, p_imu_->GetAccUpSign() * imu->linear_acceleration);
             t = imu->timestamp;
         }
+
+        kf_imu_.SetTime(t);
     }
 
     if (ui_) {
@@ -1316,9 +1389,9 @@ bool LaserMapping::Run() {
               << rpy_vehicle.yaw * 180.0 / M_PI << "]"
               << ", vel: " << state_point_.vel_.transpose() << ", grav: " << state_point_.grav_.transpose()
               << ", grav norm: " << state_point_.grav_.norm()
-              /// 个人修改（方案C，2026-10-02 第4次修复②）：把陀螺零偏搬到日志里。
-              ///   原日志没有 bg ⇒ 无法判断"零偏会不会在运动中重新随机游走"（本 bag 的 roll 漂移速率
-              ///   2.39°/s 与 bg_z 完全同量级，而日志里看不到它）⇒ 现在每帧可见，验收要求"全程基本恒定"。
+              // 个人修改（方案C，2026-10-02 第4次修复②）：把陀螺零偏搬到日志里。
+              //   原日志没有 bg ⇒ 无法判断"零偏会不会在运动中重新随机游走"（本 bag 的 roll 漂移速率
+              //   2.39°/s 与 bg_z 完全同量级，而日志里看不到它）⇒ 现在每帧可见，验收要求"全程基本恒定"。
               << ", bg: " << state_point_.bg_.transpose();
 
     return true;
@@ -1329,13 +1402,13 @@ void LaserMapping::ProjectKFs(CloudPtr cloud, int size_limit) {
     SE3 pose_cur(state.rot_, state.pos_);
     pose_cur = pose_cur.inverse();
 
-    /// 个人修改：投影进来的历史关键帧点云 kf->GetCloud() 是【雷达系】，而 pose_cur*kf->GetLIOPose()
-    ///   得到的是"当前 IMU 系 ← 历史 IMU 系"的相对位姿。要把【雷达系】点直接放到【当前雷达系】下，
-    ///   必须左右各补一次外参：
-    ///       T_lidar_cur_lidar_kf = T_imu_lidar⁻¹ * (T_imu_cur_w * T_w_imu_kf) * T_imu_lidar
-    ///   漏掉它的后果：投影进当前帧的历史关键帧点云整体歪一个 90° 外参（Airy 竖装平台），
-    ///   而这份点云正是定位端 LidarLoc 的输入（localization.cpp: lio_->GetProjCloud()），
-    ///   等于给定位喂了一份几何错乱的"局部地图"，会直接拉低匹配质量（甚至初始化失败）。
+    // 个人修改：投影进来的历史关键帧点云 kf->GetCloud() 是【雷达系】，而 pose_cur*kf->GetLIOPose()
+    //   得到的是"当前 IMU 系 ← 历史 IMU 系"的相对位姿。要把【雷达系】点直接放到【当前雷达系】下，
+    //   必须左右各补一次外参：
+    //       T_lidar_cur_lidar_kf = T_imu_lidar⁻¹ * (T_imu_cur_w * T_w_imu_kf) * T_imu_lidar
+    //   漏掉它的后果：投影进当前帧的历史关键帧点云整体歪一个 90° 外参（Airy 竖装平台），
+    //   而这份点云正是定位端 LidarLoc 的输入（localization.cpp: lio_->GetProjCloud()），
+    //   等于给定位喂了一份几何错乱的"局部地图"，会直接拉低匹配质量（甚至初始化失败）。
     const SE3 T_imu_lidar = T_imu_lidar_extrinsic();
 
     for (auto kf : proj_kfs_) {
@@ -1369,7 +1442,7 @@ void LaserMapping::MakeKF() {
     Keyframe::Ptr kf = std::make_shared<Keyframe>(kf_id_++, scan_undistort_, state_point_);
 
     if (last_kf_) {
-        /// opt pose 用之前的递推
+        // opt pose 用之前的递推
         SE3 delta = last_kf_->GetLIOPose().inverse() * kf->GetLIOPose();
         kf->SetOptPose(last_kf_->GetOptPose() * delta);
     } else {
@@ -1392,7 +1465,7 @@ void LaserMapping::MakeKF() {
     // 有keyframes时更新local map
     Timer::Evaluate([&, this]() { MapIncremental(); }, "    Incremental Mapping");
 
-    /// 更新project kfs
+    // 更新project kfs
     if (proj_kfs_.size() >= options_.max_proj_kfs_) {
         auto last = proj_kfs_.back();
 
@@ -1504,7 +1577,7 @@ bool LaserMapping::SyncPackages() {
                 (measures_.scan_->points.back().time / double(1000) - lidar_mean_scantime_) / scan_num_;
 
             if ((lidar_end_time_ - measures_.lidar_begin_time_) > 5 * lo::lidar_time_interval) {
-                /// timestamp 有异常
+                // timestamp 有异常
                 lidar_end_time_ = measures_.lidar_begin_time_ + lo::lidar_time_interval;
                 lidar_mean_scantime_ = lo::lidar_time_interval;
             }
@@ -1647,13 +1720,13 @@ void LaserMapping::ObsModel(NavState &s, ESKF::CustomObservationModel &obs) {
 
                 point_selected_icp_[i] = point_selected_surf_[i];
 
-                /// 能找到3个点以上，则估计平面
+                // 能找到3个点以上，则估计平面
                 if (point_selected_surf_[i]) {
                     point_selected_surf_[i] =
                         math::esti_plane(plane_coef_[i], points_near, fasterlio::ESTI_PLANE_THRESHOLD);
                 }
 
-                /// 计算平面阈值
+                // 计算平面阈值
                 if (point_selected_surf_[i]) {
                     auto temp = point_world.getVector4fMap();
                     temp[3] = 1.0;
@@ -1704,7 +1777,7 @@ void LaserMapping::ObsModel(NavState &s, ESKF::CustomObservationModel &obs) {
     const Vec3f off_t = offset_t_lidar_fixed_.cast<float>();
     const Mat3f Rt = s.rot_.matrix().transpose().cast<float>();
 
-    /// 点面ICP部分
+    // 点面ICP部分
     obs.HTH_.setZero();
     obs.HTr_.setZero();
 
@@ -1753,7 +1826,7 @@ void LaserMapping::ObsModel(NavState &s, ESKF::CustomObservationModel &obs) {
         //           << ", 85%: " << res_sq[res_sq.size() * 0.85];
     }
 
-    /// 点到点ICP部分
+    // 点到点ICP部分
 
     if (options_.enable_icp_part_) {
         JTJ.resize(cnt_pts);
@@ -1769,17 +1842,17 @@ void LaserMapping::ObsModel(NavState &s, ESKF::CustomObservationModel &obs) {
                 return;
             }
 
-            /// TODO: 外参
+            // TODO: 外参
             Vec3d q = scan_down_body_->points[i].getVector3fMap().cast<double>();
             Vec3d qs = scan_down_world_->points[i].getVector3fMap().cast<double>();
 
             Eigen::Matrix<double, 3, ESKF::pose_obs_dim_> J;
             J.setZero();
 
-            /// translation 部分
+            // translation 部分
             J.block<3, 3>(0, 0) = Mat3d::Identity();
 
-            /// rotation 部分
+            // rotation 部分
             J.block<3, 3>(0, 3) = -(s.rot_.matrix() * offset_R_lidar_fixed_) * SO3::hat(q);
 
             Vec3d e = qs - nearest_points_[i][0].getVector3fMap().cast<double>();
@@ -1803,7 +1876,7 @@ void LaserMapping::ObsModel(NavState &s, ESKF::CustomObservationModel &obs) {
     }
 }
 
-///////////////////////////  private method /////////////////////////////////////////////////////////////////////
+//////////////////  private method //////////////////////////////////////////////
 
 CloudPtr LaserMapping::GetGlobalMap(bool use_lio_pose, bool use_voxel, float res) {
     CloudPtr global_map(new PointCloudType);
@@ -1811,9 +1884,9 @@ CloudPtr LaserMapping::GetGlobalMap(bool use_lio_pose, bool use_voxel, float res
     pcl::VoxelGrid<PointType> voxel;
     voxel.setLeafSize(res, res, res);
 
-    /// 个人修改：关键帧点云是【雷达系】(MakeKF 存入的 scan_undistort_ 位于雷达系)，
-    /// 而关键帧位姿是【IMU 系】；拼图时必须补上 lidar→IMU 外参，
-    /// 才能与前端 UI(见 Run 中的 ToLidarPose 用法)、局部地图、定位端(T_map_lidar)约定一致。
+    // 个人修改：关键帧点云是【雷达系】(MakeKF 存入的 scan_undistort_ 位于雷达系)，
+    // 而关键帧位姿是【IMU 系】；拼图时必须补上 lidar→IMU 外参，
+    // 才能与前端 UI(见 Run 中的 ToLidarPose 用法)、局部地图、定位端(T_map_lidar)约定一致。
     const SE3 T_imu_lidar = T_imu_lidar_extrinsic();
 
     for (auto &kf : all_keyframes_) {
@@ -1862,7 +1935,7 @@ CloudPtr LaserMapping::GetGlobalMap(bool use_lio_pose, bool use_voxel, float res
 }
 
 void LaserMapping::SaveMap() {
-    /// 保存地图
+    // 保存地图
     auto global_map = GetGlobalMap(true);
 
     pcl::io::savePCDFileBinaryCompressed("./data/lio.pcd", *global_map);
@@ -1879,21 +1952,21 @@ CloudPtr LaserMapping::GetRecentCloud() {
 }
 
 CloudPtr LaserMapping::GetProjCloud() {
-    /// 个人修改（2026-10-02 修复段错误）：必须先【深拷贝】一份再投影，不能再写成 `auto cloud = scan_undistort_;`
-    ///   原因：MakeKF 里 `std::make_shared<Keyframe>(kf_id_++, scan_undistort_, state_point_)` 存的就是这个
-    ///   scan_undistort_（shared_ptr 别名，见 imu_processing.hpp `pcl_out = meas.scan_`），
-    ///   所以 `auto cloud = scan_undistort_` 之后 cloud 与 kf->GetCloud() 是【同一个对象】；
-    ///   而 ProjectKFs 是“边遍历边追加”：
-    ///       for (auto &pt : kf->GetCloud()->points) cloud->push_back(pcl_pt);
-    ///   二者落在同一个 points(vector) 上 ⇒ 第一次 push_back 就扩容
-    ///   （_M_realloc_insert：新块分配 + 拷贝 + 旧块 release），范围 for 的 begin/end 迭代器随即悬空，
-    ///   下一次解引用 pt 即 SIGSEGV（实测 gdb 回溯：ProjectKFs@laser_mapping.cc:1349 ← GetProjCloud:1883）。
-    ///   本平台 96 线单帧 86400 点 × 32B ≈ 2.7MB，超过 glibc mmap 阈值(128KB)，旧缓冲区会被 munmap，
-    ///   所以崩溃是【必现】的；若点云小于 128KB 则只是读出脏点（不崩但结果错）——更难查。
-    ///   触发条件：proj_kfs_ 非空，即“第一个关键帧创建后”的第一次 GetProjCloud()，与实测现象完全一致
-    ///   （MakeKF 打出 "LIO: create kf 0" → Run() 打出 "LIO state" → 紧接着 SIGSEGV）。
-    ///   另外这也顺带消除了 LIO 线程与定位线程共用 scan_undistort_ 的数据竞争
-    ///   （下一帧 UndistortPcl 会直接改写 scan_undistort_，而定位线程可能还在读）。代价仅一次 2.7MB 拷贝。
+    // 个人修改（2026-10-02 修复段错误）：必须先【深拷贝】一份再投影，不能再写成 `auto cloud = scan_undistort_;`
+    //   原因：MakeKF 里 `std::make_shared<Keyframe>(kf_id_++, scan_undistort_, state_point_)` 存的就是这个
+    //   scan_undistort_（shared_ptr 别名，见 imu_processing.hpp `pcl_out = meas.scan_`），
+    //   所以 `auto cloud = scan_undistort_` 之后 cloud 与 kf->GetCloud() 是【同一个对象】；
+    //   而 ProjectKFs 是“边遍历边追加”：
+    //       for (auto &pt : kf->GetCloud()->points) cloud->push_back(pcl_pt);
+    //   二者落在同一个 points(vector) 上 ⇒ 第一次 push_back 就扩容
+    //   （_M_realloc_insert：新块分配 + 拷贝 + 旧块 release），范围 for 的 begin/end 迭代器随即悬空，
+    //   下一次解引用 pt 即 SIGSEGV（实测 gdb 回溯：ProjectKFs@laser_mapping.cc:1349 ← GetProjCloud:1883）。
+    //   本平台 96 线单帧 86400 点 × 32B ≈ 2.7MB，超过 glibc mmap 阈值(128KB)，旧缓冲区会被 munmap，
+    //   所以崩溃是【必现】的；若点云小于 128KB 则只是读出脏点（不崩但结果错）——更难查。
+    //   触发条件：proj_kfs_ 非空，即“第一个关键帧创建后”的第一次 GetProjCloud()，与实测现象完全一致
+    //   （MakeKF 打出 "LIO: create kf 0" → Run() 打出 "LIO state" → 紧接着 SIGSEGV）。
+    //   另外这也顺带消除了 LIO 线程与定位线程共用 scan_undistort_ 的数据竞争
+    //   （下一帧 UndistortPcl 会直接改写 scan_undistort_，而定位线程可能还在读）。代价仅一次 2.7MB 拷贝。
     CloudPtr cloud(new PointCloudType());
     *cloud = *scan_undistort_;  // pcl 点云 copy-assign：points/header/width/height 一并复制
     ProjectKFs(cloud);

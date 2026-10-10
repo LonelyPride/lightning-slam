@@ -56,8 +56,8 @@ PixelFormat PixelFormatFromString(const std::string& format);
 
 std::vector<PixelFormat> GetSupportedPixelFormats();
 
-////////////////////////////////////////////////////////////////////
-/// Deprecated aliases for above
+//////////////////////////////////////////////
+// Deprecated aliases for above
 
 PANGOLIN_DEPRECATED("Use PixelFormat instead")
 typedef PixelFormat VideoPixelFormat;

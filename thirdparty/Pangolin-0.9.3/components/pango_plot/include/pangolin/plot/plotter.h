@@ -149,15 +149,15 @@ public:
     void PassiveMouseMotion(View&, int x, int y, int button_state);
     void Special(View&, InputSpecial inType, float x, float y, float p1, float p2, float p3, float p4, int button_state);
 
-    /// Remove all current series plots
+    // Remove all current series plots
     void ClearSeries();
 
-    /// Add series X,Y plot from glsl compatible expressions x_expr, y_expr
-    /// $i refers to integral index of datum in log.
-    /// $0, $1, $2, ... refers to nth series in log.
-    ///    e.g. x_expr = "$i", y_expr = "$0"       // index - data[0] plot
-    ///    e.g. x_expr = "$0", y_expr = "$1"       // data[0], data[1] X-Y plot
-    ///    e.g. x_exptr ="$i", y_expr = "sqrt($1)} // index - sqrt(data[0]) plot
+    // Add series X,Y plot from glsl compatible expressions x_expr, y_expr
+    // $i refers to integral index of datum in log.
+    // $0, $1, $2, ... refers to nth series in log.
+    //    e.g. x_expr = "$i", y_expr = "$0"       // index - data[0] plot
+    //    e.g. x_expr = "$0", y_expr = "$1"       // data[0], data[1] X-Y plot
+    //    e.g. x_exptr ="$i", y_expr = "sqrt($1)} // index - sqrt(data[0]) plot
     void AddSeries(const std::string& x_expr, const std::string& y_expr,
         DrawingMode drawing_mode = DrawingModeLine, Colour colour = Colour::Unspecified(),
         const std::string &title = "$y", DataLog* log = nullptr
@@ -165,11 +165,11 @@ public:
 
     std::string PlotTitleFromExpr(const std::string& expr) const;
 
-    /// Remove all current markers
+    // Remove all current markers
     void ClearMarkers();
 
-    /// Add horizontal or vertical inequality marker; equal-to, less-than, or greater than.
-    /// This is useful for annotating a critical point or valid region.
+    // Add horizontal or vertical inequality marker; equal-to, less-than, or greater than.
+    // This is useful for annotating a critical point or valid region.
     Marker& AddMarker(
         Marker::Direction d, float value,
         Marker::Equality leg = Marker::Equal, Colour c = Colour()
@@ -180,7 +180,7 @@ public:
     void ClearImplicitPlots();
     void AddImplicitPlot();
 
-    /// Reset colour wheel to initial state. May be useful together with ClearSeries() / ClearMarkers()
+    // Reset colour wheel to initial state. May be useful together with ClearSeries() / ClearMarkers()
     void ResetColourWheel();
 
     void ShowHoverLines(bool show)

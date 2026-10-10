@@ -44,7 +44,7 @@ if (use_lio_pose) {
 ### 1.3 补丁（改后 `laser_mapping.cc:947-973`）
 
 ```cpp
-/// 个人修改：关键帧点云是【雷达系】，而关键帧位姿是【IMU 系】；拼图时必须补上 lidar→IMU 外参
+// 个人修改：关键帧点云是【雷达系】，而关键帧位姿是【IMU 系】；拼图时必须补上 lidar→IMU 外参
 const SE3 T_imu_lidar = T_imu_lidar_extrinsic();
 ...
 if (use_lio_pose) {

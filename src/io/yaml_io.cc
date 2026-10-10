@@ -20,12 +20,12 @@ YAML_IO::YAML_IO(const std::string &path) {
 
 namespace {
 
-/// 个人修改（2026-10-01）：安全地取子节点（可选键探测的基石）。
-///   实测 yaml-cpp（0.7/0.8）：对【无效/未定义】节点调用 `IsMap()`、`as<T>()` 会抛
-///   `YAML::InvalidNode`（报 "invalid node; first invalid key: xxx"）；只有
-///   `IsDefined()` / `IsNull()` 在任何节点上都是安全的；而对【合法 map】取不存在的键
-///   只是返回"无效节点"、并不抛异常。
-///   因此探测顺序必须是：IsDefined/IsNull → IsMap → operator[]，任何一步不满足就返回 false。
+// 个人修改（2026-10-01）：安全地取子节点（可选键探测的基石）。
+//   实测 yaml-cpp（0.7/0.8）：对【无效/未定义】节点调用 `IsMap()`、`as<T>()` 会抛
+//   `YAML::InvalidNode`（报 "invalid node; first invalid key: xxx"）；只有
+//   `IsDefined()` / `IsNull()` 在任何节点上都是安全的；而对【合法 map】取不存在的键
+//   只是返回"无效节点"、并不抛异常。
+//   因此探测顺序必须是：IsDefined/IsNull → IsMap → operator[]，任何一步不满足就返回 false。
 bool GetChildNode(const YAML::Node &parent, const std::string &key, YAML::Node &child) {
     if (!parent.IsDefined() || parent.IsNull() || !parent.IsMap()) {
         return false;

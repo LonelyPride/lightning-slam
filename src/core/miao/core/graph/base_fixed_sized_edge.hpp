@@ -59,7 +59,7 @@ void BaseFixedSizedEdge<D, E, VertexTypes...>::LinearizeOplusN() {
         jacobianOplus.col(d) = scalar * errorBak;
     }
 
-    /// recover the copied vertex
+    // recover the copied vertex
     vertices_[N] = vertex;
 }
 

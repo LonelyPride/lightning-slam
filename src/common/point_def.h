@@ -11,9 +11,9 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
-/// 地图点云的一些定义
+// 地图点云的一些定义
 
-/// clang-format off
+// clang-format off
 struct PointXYZIT {
     PCL_ADD_POINT4D
     PCL_ADD_INTENSITY
@@ -83,7 +83,7 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(ouster_ros::Point,
 
 namespace lightning {
 
-/// 各类点云的缩写
+// 各类点云的缩写
 
 using PointType = PointXYZIT;
 using PointCloudType = pcl::PointCloud<PointType>;
@@ -93,7 +93,7 @@ using PointVec = std::vector<PointType, Eigen::aligned_allocator<PointType>>;
 inline Vec3f ToVec3f(const PointType& pt) { return pt.getVector3fMap(); }
 inline Vec3d ToVec3d(const PointType& pt) { return pt.getVector3fMap().cast<double>(); }
 
-/// 带ring, range等其他信息的全量信息点云
+// 带ring, range等其他信息的全量信息点云
 struct FullPointType {
     PCL_ADD_POINT4D
 
@@ -109,7 +109,7 @@ struct FullPointType {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
-/// 全量点云的定义
+// 全量点云的定义
 using FullPointCloudType = pcl::PointCloud<FullPointType>;
 using FullCloudPtr = FullPointCloudType::Ptr;
 

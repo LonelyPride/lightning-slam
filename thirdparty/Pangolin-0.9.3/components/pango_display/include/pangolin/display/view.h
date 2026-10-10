@@ -59,7 +59,7 @@ struct Handler;
 
 class OpenGlRenderState;
 
-/// A Display manages the location and resizing of an OpenGl viewport.
+// A Display manages the location and resizing of an OpenGl viewport.
 struct PANGOLIN_EXPORT View
 {
     View(double aspect=0.0)
@@ -213,7 +213,7 @@ struct PANGOLIN_EXPORT View
     // External draw function
     std::function<void(View&)> extern_draw_function;
 
-    ////////////////////////////////////////////////
+    ////////////////////////////////
 
     PANGOLIN_DEPRECATED("Use pangolin::SaveWindowOnRender(...) instead.")
     void SaveOnRender(const std::string& filename_hint);

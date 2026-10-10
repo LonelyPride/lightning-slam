@@ -121,18 +121,18 @@ struct PGOImpl {
     PGOImpl(Options options = {});
     ~PGOImpl() {}
 
-    /// 总逻辑
+    // 总逻辑
     void AddPGOFrame(std::shared_ptr<PGOFrame> frame);
 
-    /// 为frame分配相对定位pose，如果已经有了就什么也不做。
-    /// 注意有 lidarOdom pose 和 DR pose 两个；要求至少有一个，否则返回 false。
+    // 为frame分配相对定位pose，如果已经有了就什么也不做。
+    // 注意有 lidarOdom pose 和 DR pose 两个；要求至少有一个，否则返回 false。
     // bool AssignRelativePoseIfNeeded(std::shared_ptr<PGOFrame> frame);
     bool AssignLidarOdomPoseIfNeeded(std::shared_ptr<PGOFrame> frame);
     bool AssignDRPoseIfNeeded(std::shared_ptr<PGOFrame> frame);
 
     void UpdateLidarOdomStatusInFrame(NavState& lio_result, std::shared_ptr<PGOFrame> frame);
 
-    /// 执行优化的逻辑
+    // 执行优化的逻辑
     void RunOptimization();
 
     // 建立g2o优化问题
@@ -161,26 +161,26 @@ struct PGOImpl {
     // 获取优化详细信息
     void CollectOptimizationStatistics();
 
-    /// 是否打开调试输出
+    // 是否打开调试输出
     void SetDebug(bool debug) { debug_ = debug; }
 
-    /// 清空并重置
+    // 清空并重置
     bool Reset();
 
    private:
-    /// 更新系统状态
+    // 更新系统状态
     void UpdatePoseGraphState();
 
-    /// 保存结果
+    // 保存结果
     void UpdateFinalResultByLastFrame();
     void UpdateFinalResultByWindow();
     inline void PGOFrameToResult(const PGOFramePtr& frame, LocalizationResult& result);
     inline void SetPgoGraphVertexes();
 
-    /// 自适应调整窗口大小：如果早期帧的优化结果已经充分收敛，删除一部分；否则，适当多保留一些
+    // 自适应调整窗口大小：如果早期帧的优化结果已经充分收敛，删除一部分；否则，适当多保留一些
     void SlideWindowAdaptively();
 
-    /// 边缘化处理：把即将被滑出窗口的PGOFrame的约束转化为下一个PGOFrame的先验约束
+    // 边缘化处理：把即将被滑出窗口的PGOFrame的约束转化为下一个PGOFrame的先验约束
     void Marginalize(const PGOFramePtr& frame_to_remove, const PGOFramePtr& frame_to_keep);
 
     void log_window_status(std::ostringstream& report);
@@ -194,7 +194,7 @@ struct PGOImpl {
     const double kLidarOdomTransDegenThres = 0.3;
     const double kLidarOdomRotDegenThres = 0.3;
 
-    /// data
+    // data
     std::vector<std::shared_ptr<PGOFrame>> frames_;              // PGO的帧队列
     std::shared_ptr<PGOFrame> last_frame_ = nullptr;             // 上一帧，用于处理延时
     std::map<FrameId, std::shared_ptr<PGOFrame>> frames_by_id_;  // PGO帧按照Id进行索引
@@ -209,10 +209,10 @@ struct PGOImpl {
     double last_gps_time_ = 0;          // 上一个gps时间戳,用于判断重复/回流数据
     FrameId accumulated_frame_id_ = 0;  // 每次自加1，作为新进PGOFrame的Id
 
-    /// the miao optimizer
+    // the miao optimizer
     std::shared_ptr<miao::Optimizer> optimizer_ = nullptr;
 
-    /// miao 里的指针接口是shared_ptr
+    // miao 里的指针接口是shared_ptr
     std::vector<std::shared_ptr<miao::VertexSE3>> vertices_;            // pose graph顶点
     std::vector<std::shared_ptr<miao::EdgeSE3>> lidar_odom_edges_;      // 相对运动观测（来自LidarOdom）
     std::vector<std::shared_ptr<miao::EdgeSE3>> dr_edges_;              // 相对运动观测（来自DR）
@@ -225,7 +225,7 @@ struct PGOImpl {
     // output call back
     std::function<void(const LocalizationResult& output_result)> output_func_;
 
-    /// params
+    // params
     Vec6d rtk_fix_noise_ = Vec6d::Zero();         // 固定解RTK噪声
     Vec6d rtk_other_noise_ = Vec6d::Zero();       // 其他解RTK噪声
     Vec6d lidar_loc_noise_ = Vec6d::Zero();       // lidarLoc噪声
@@ -242,7 +242,7 @@ struct PGOImpl {
     bool gps2lidar_ = false;     // 未启用
     bool lidar2gps_ = false;     // 未启用
 
-    /// 判定Lidar odom是否有效
+    // 判定Lidar odom是否有效
     bool lidar_odom_valid_ = true;
     bool lidar_odom_conflict_with_dr_ = false;  // LO和DR是否有冲突
     int lidar_odom_conflict_with_dr_cnt_ = 0;

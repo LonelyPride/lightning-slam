@@ -143,7 +143,7 @@ void PointCloudPreprocess::RoboSenseHandler(const sensor_msgs::msg::PointCloud2:
 
     double head_time = msg->header.stamp.sec + msg->header.stamp.nanosec / 1e9;
 
-    /// RoboSense的时间戳是double, 均为linux时间且单位为秒，这里减去header time并乘以1000得到毫秒为单位的时间戳
+    // RoboSense的时间戳是double, 均为linux时间且单位为秒，这里减去header time并乘以1000得到毫秒为单位的时间戳
 
     for (int i = 0; i < pl_orig.points.size(); i++) {
         if (i % point_filter_num_ != 0) {

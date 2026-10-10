@@ -100,7 +100,7 @@ class Solver {
     lightning::VecXd x_;                  // 求解的x
     lightning::VecXd b_;                  // 求解的b
     size_t x_size_ = 0, max_x_size_ = 0;  // x的size
-    bool is_levenberg_ = false;           ///< the system we gonna Solve is a Levenberg-Marquardt system
+    bool is_levenberg_ = false;           //< the system we gonna Solve is a Levenberg-Marquardt system
     size_t additional_vector_space_ = 0;
 
     void ResizeVector(size_t sx);

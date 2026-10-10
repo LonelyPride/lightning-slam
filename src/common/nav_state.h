@@ -68,9 +68,9 @@ struct NavState {
         FullVectState res = FullVectState::Zero();
         // 减零偏
         Vec3d omega = gyro - bg_;
-        /// 个人修改（方案C）：加计零偏参与在线估计。
-        ///   原实现 a_inertial = rot_ * acce（注释：加计零偏不再参与在线估计），
-        ///   而本平台加计静止幅值误差 0.041 m/s² 无处安放 ⇒ 预测被恒定"斜向"加速度污染。
+        // 个人修改（方案C）：加计零偏参与在线估计。
+        //   原实现 a_inertial = rot_ * acce（注释：加计零偏不再参与在线估计），
+        //   而本平台加计静止幅值误差 0.041 m/s² 无处安放 ⇒ 预测被恒定"斜向"加速度污染。
         Vec3d a_inertial = rot_ * (acce - ba_);
 
 
@@ -82,7 +82,7 @@ struct NavState {
         return res;
     }
 
-    /// 运动方程对状态的雅可比
+    // 运动方程对状态的雅可比
     inline Eigen::Matrix<double, full_dim, dim> df_dx(const Vec3d& acce) const {
         Eigen::Matrix<double, full_dim, dim> cov = Eigen::Matrix<double, full_dim, dim>::Zero();
         cov.block<kBlockDim, kBlockDim>(kPosIdx, kVelIdx) = Mat3d::Identity();
@@ -90,14 +90,14 @@ struct NavState {
         // Vec3d omega = gyro - bg_;
         cov.block<kBlockDim, kBlockDim>(kVelIdx, kRotIdx) = -rot_.matrix() * SO3::hat(acc);
         cov.block<kBlockDim, kBlockDim>(kRotIdx, kBgIdx) = -Eigen::Matrix3d::Identity();
-        /// 个人修改（方案C）：加速度对加计零偏的偏导（ba 以"减去"的形式进入 a_inertial）
+        // 个人修改（方案C）：加速度对加计零偏的偏导（ba 以"减去"的形式进入 a_inertial）
         cov.block<kBlockDim, kBlockDim>(kVelIdx, kBaIdx) = -rot_.matrix();
         return cov;
     }
 
-    /// 运动方程对噪声的雅可比
+    // 运动方程对噪声的雅可比
     inline Eigen::Matrix<double, full_dim, 15> df_dw() const {
-        /// 个人修改（方案C）：过程噪声维度 12 → 15，新增 ba 的随机游走（第 9~11 列）
+        // 个人修改（方案C）：过程噪声维度 12 → 15，新增 ba 的随机游走（第 9~11 列）
         Eigen::Matrix<double, full_dim, 15> cov = Eigen::Matrix<double, full_dim, 15>::Zero();
         cov.block<kBlockDim, kBlockDim>(kVelIdx, 3) = -rot_.matrix();
         cov.block<kBlockDim, kBlockDim>(kRotIdx, 0) = -Eigen::Matrix3d::Identity();
@@ -106,7 +106,7 @@ struct NavState {
         return cov;
     }
 
-    /// 递推
+    // 递推
     void oplus(const FullVectState& vec, double dt) {
         timestamp_ += dt;
         pos_ += vec.middleRows(kPosIdx, kBlockDim) * dt;
@@ -149,7 +149,7 @@ struct NavState {
         return ret;
     }
 
-    /// 各个子变量所在维度信息
+    // 各个子变量所在维度信息
     struct MetaInfo {
         MetaInfo(int idx, int vdim, int dof) : idx_(idx), dim_(vdim), dof_(dof) {}
         int idx_ = 0;  // 变量所在索引
@@ -173,7 +173,7 @@ struct NavState {
         pos_ = pose.translation();
     }
 
-    /// 个人修改（方案C）：返回在线估计出来的加速度计零偏（原实现固定返回 0）
+    // 个人修改（方案C）：返回在线估计出来的加速度计零偏（原实现固定返回 0）
     inline Vec3d Getba() const { return ba_; }
     inline Vec3d Getbg() const { return bg_; }
     inline Vec3d GetVel() const { return vel_; }

@@ -461,7 +461,7 @@ namespace py_pangolin {
       .value("UVC_GET_DEF", pangolin::UvcRequestCode::UVC_GET_DEF)
       .export_values();
 
-    /// This iterator enable pythonic video iterations a la `for frame in video_input: ...`
+    // This iterator enable pythonic video iterations a la `for frame in video_input: ...`
     struct VideoInputIterator {
         VideoInputIterator(pangolin::VideoInput& vi, pybind11::object ref) : vi(vi), ref(ref) { }
 

@@ -56,7 +56,7 @@ public:
 
     ~ImagesVideo();
 
-    ///////////////////////////////////
+    ////////////////////////
     // Implement VideoInterface
     
     void Start() override;
@@ -71,7 +71,7 @@ public:
     
     bool GrabNewest( unsigned char* image, bool wait = true ) override;
 
-    ///////////////////////////////////
+    ////////////////////////
     // Implement VideoPlaybackInterface
 
     size_t GetCurrentFrameId() const override;
@@ -80,7 +80,7 @@ public:
 
     size_t Seek(size_t frameid) override;
 
-    ///////////////////////////////////
+    ////////////////////////
     // Implement VideoPropertiesInterface
 
     const picojson::value& DeviceProperties() const override;

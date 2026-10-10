@@ -39,7 +39,7 @@ class EdgePointOnCircle : public miao::BaseUnaryEdge<1, Eigen::Vector2d, VertexC
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     EdgePointOnCircle() {}
 
-    /// 计算误差
+    // 计算误差
     void ComputeError() override {
         auto v = (VertexCircle *)(vertices_[0]);
         auto circle = v->Estimate();
@@ -50,7 +50,7 @@ class EdgePointOnCircle : public miao::BaseUnaryEdge<1, Eigen::Vector2d, VertexC
         error_[0] = (measurement_ - center).norm() - radius;
     }
 
-    /// 雅可比使用数值导数
+    // 雅可比使用数值导数
     void LinearizeOplus() override {
         auto v = (VertexCircle *)(vertices_[0]);
         auto circle = v->Estimate();
@@ -134,7 +134,7 @@ int main(int argc, char **argv) {
             Eigen::MatrixXd A(FLAGS_num_points, 3);
             Eigen::VectorXd b(FLAGS_num_points);
 
-            /// NOTE: 这里的定义貌似不完全一样
+            // NOTE: 这里的定义貌似不完全一样
             for (int i = 0; i < FLAGS_num_points; ++i) {
                 A(i, 0) = -2 * points[i].x();
                 A(i, 1) = -2 * points[i].y();

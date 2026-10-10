@@ -9,8 +9,8 @@
 
 namespace lightning::miao {
 
-/// 线性方程求解器的基类
-/// 默认就是稀疏矩阵
+// 线性方程求解器的基类
+// 默认就是稀疏矩阵
 
 /**
  * \brief basic Solver for Ax = b
@@ -20,7 +20,7 @@ namespace lightning::miao {
  * is stored) and positive-semi-definite.
  */
 
-/// TODO 对于dense的问题，默认的linear solver多一步拷贝
+// TODO 对于dense的问题，默认的linear solver多一步拷贝
 template <typename MatrixType>
 class LinearSolver {
    public:

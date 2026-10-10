@@ -29,7 +29,7 @@ struct observer_type {};
 
 namespace trait {
 
-/// represent a list of types
+// represent a list of types
 template <typename...> struct typelist {};
 
 /**
@@ -104,11 +104,11 @@ static constexpr bool with_rtti =
         false;
 #endif
 
-/// determine if a pointer is convertible into a "weak" pointer
+// determine if a pointer is convertible into a "weak" pointer
 template <typename P>
 constexpr bool is_weak_ptr_compatible_v = detail::is_weak_ptr_compatible<std::decay_t<P>>::value;
 
-/// determine if a type T (Callable or Pmf) is callable with supplied arguments
+// determine if a type T (Callable or Pmf) is callable with supplied arguments
 template <typename L, typename... T>
 constexpr bool is_callable_v = detail::is_callable<T..., L>::value;
 

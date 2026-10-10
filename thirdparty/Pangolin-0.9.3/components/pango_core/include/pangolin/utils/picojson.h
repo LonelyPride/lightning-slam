@@ -146,17 +146,17 @@ protected:
 public:
 
 
-    /////////////////////////////
+    ////////////////////
     // Constructors / Destructor
-    /////////////////////////////
+    ////////////////////
 
     ~value();
     value();
     value(int type, bool);
 
-    /////////////////////////////
+    ////////////////////
     // Implicit type constructors
-    /////////////////////////////
+    ////////////////////
 
     value(bool b) : type_(boolean_type) {
         u_.boolean_ = b;
@@ -229,9 +229,9 @@ public:
     value(const value& x);
     value& operator=(const value& x);
 
-    /////////////////////////////
+    ////////////////////
     // Query / get type
-    /////////////////////////////
+    ////////////////////
 
     void swap(value& x);
     template <typename T> bool is() const;
@@ -240,18 +240,18 @@ public:
     bool evaluate_as_boolean() const;
     size_t size() const;
 
-    /////////////////////////////
+    ////////////////////
     // Usage as array
-    /////////////////////////////
+    ////////////////////
 
     value& operator[](size_t idx);
     const value& operator[](size_t idx) const;
     bool contains(size_t idx) const;
     value& push_back(const value& = value() );
 
-    /////////////////////////////
+    ////////////////////
     // Usage as object
-    /////////////////////////////
+    ////////////////////
 
     value& operator[](const std::string& key);
     const value& operator[](const std::string& key) const;
@@ -260,9 +260,9 @@ public:
     template <typename T>
     T get_value(const std::string& key, T default_value) const;
 
-    /////////////////////////////
+    ////////////////////
     // Serialization
-    /////////////////////////////
+    ////////////////////
 
     std::string to_str() const;
     template <typename Iter> void serialize(Iter os, bool prettify = false) const;

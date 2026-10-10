@@ -51,8 +51,8 @@ int main(int argc, char** argv) {
     std::vector<std::shared_ptr<VertexSE2>> vertices_2d;
     std::vector<std::shared_ptr<EdgeSE2>> edges_2d;
 
-    /// NOTE: g2o VertexSE3 与 miao::VertexSE3
-    /// 的误差计算方式并不完全一致，rotation部分的误差和更新量相差一半，因此对rotation部分的协方差要除以4
+    // NOTE: g2o VertexSE3 与 miao::VertexSE3
+    // 的误差计算方式并不完全一致，rotation部分的误差和更新量相差一半，因此对rotation部分的协方差要除以4
 
     while (!fin.eof()) {
         std::string line;
@@ -180,7 +180,7 @@ int main(int argc, char** argv) {
 
     Timer::Evaluate([&]() { optimizer->Optimize(FLAGS_iterations); }, "optimize");
 
-    /// TODO: save
+    // TODO: save
     LOG(INFO) << "saving graph to result.g2o";
     std::ofstream fout("./result.g2o");
 

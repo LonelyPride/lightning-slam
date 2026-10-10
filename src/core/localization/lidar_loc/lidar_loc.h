@@ -20,13 +20,13 @@ class PangolinWindow;
 
 namespace lightning::loc {
 
-/// 激光定位对外接口类
+// 激光定位对外接口类
 class LidarLoc {
    public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     using UL = std::unique_lock<std::mutex>;
 
-    /// 定位方法
+    // 定位方法
     enum class LocMethod {
         NDT_OMP,  // OMP版本NDT
     };
@@ -45,51 +45,51 @@ class LidarLoc {
         bool enable_parking_static_ = false;           // 是否在静止时输出固定位置
         bool enable_icp_adjust_ = false;               // 是否使用icp调整ndt匹配结果提高定位精度
 
-        /// 个人修改（2026-10-01）：手动初始位姿（RViz "2D Pose Estimate" / 外部话题）配套参数。
-        ///   手动点选天然带"点击延迟"（车在动时约 0.5~2 m）与朝向误差，而细分辨率 NDT 收敛半径小，
-        ///   直接当种子容易被 min_init_confidence_ 拒掉；故对【手动种子】额外做一步
-        ///   "粗分辨率(5m) NDT + 小范围 yaw 搜索"，再把结果交给细分辨率 NDT，最终仍由同一门槛把关。
-        ///   普通初始化（功能点 start / recover）不启用，行为与修改前一致。
+        // 个人修改（2026-10-01）：手动初始位姿（RViz "2D Pose Estimate" / 外部话题）配套参数。
+        //   手动点选天然带"点击延迟"（车在动时约 0.5~2 m）与朝向误差，而细分辨率 NDT 收敛半径小，
+        //   直接当种子容易被 min_init_confidence_ 拒掉；故对【手动种子】额外做一步
+        //   "粗分辨率(5m) NDT + 小范围 yaw 搜索"，再把结果交给细分辨率 NDT，最终仍由同一门槛把关。
+        //   普通初始化（功能点 start / recover）不启用，行为与修改前一致。
         bool manual_init_rough_search_ = true;      // 是否启用手动种子的粗分辨率搜索
         double manual_init_yaw_search_deg_ = 30.0;  // yaw 搜索范围（度，种子左右各搜这么多）
         int manual_init_yaw_search_step_ = 7;       // yaw 搜索采样数（均匀分布在 ±范围内）
         int manual_init_refine_iter_ = 2;           // 接受手动种子后再迭代精修的次数（见 InitWithFP）
 
-        /// 个人修改（2026-10-02，方案C：z 漂移根治）—— 高度约束与地图健康度自检
-        ///
-        /// 【为什么要有高度约束】本工程定位端只有"点云匹配"一种绝对观测：
-        ///   匹配输出 z 完全由地图决定。当地图本身倾斜（建图时世界系没和重力对齐，
-        ///   本 bag 实测地图地面在 3.7 m 内下降 1.12 m ≈ 22°）时，匹配会忠实地"跟着地图走"，
-        ///   表现为定位 z 沿路径持续漂移 —— 定位端无法通过匹配修好它，只能：
-        ///     ① 把 z 约束到地图起点的高度附近（本组参数，原代码里被注释掉的 with_height_ 逻辑）；
-        ///     ② 启动时自检地图地面倾角并大声告警（CheckMapLevel），提示重建地图。
-        ///
-        /// 【语义】z_target = map_height_（首帧功能点所在高度）
-        ///     tol = 0        ⇒ 完全锁定（原注释代码的行为；路线含坡道时会在坡道段产生误差）
-        ///     tol > 0        ⇒ "软皮带"：只约束偏离超过 ±tol 的部分（默认 0.3 m）
-        ///     gain = 0       ⇒ 关闭（等价于修改前行为）
+        // 个人修改（2026-10-02，方案C：z 漂移根治）—— 高度约束与地图健康度自检
+        //
+        // 【为什么要有高度约束】本工程定位端只有"点云匹配"一种绝对观测：
+        //   匹配输出 z 完全由地图决定。当地图本身倾斜（建图时世界系没和重力对齐，
+        //   本 bag 实测地图地面在 3.7 m 内下降 1.12 m ≈ 22°）时，匹配会忠实地"跟着地图走"，
+        //   表现为定位 z 沿路径持续漂移 —— 定位端无法通过匹配修好它，只能：
+        //     ① 把 z 约束到地图起点的高度附近（本组参数，原代码里被注释掉的 with_height_ 逻辑）；
+        //     ② 启动时自检地图地面倾角并大声告警（CheckMapLevel），提示重建地图。
+        //
+        // 【语义】z_target = map_height_（首帧功能点所在高度）
+        //     tol = 0        ⇒ 完全锁定（原注释代码的行为；路线含坡道时会在坡道段产生误差）
+        //     tol > 0        ⇒ "软皮带"：只约束偏离超过 ±tol 的部分（默认 0.3 m）
+        //     gain = 0       ⇒ 关闭（等价于修改前行为）
         bool height_constraint_enable_ = true;   // 总开关（缺省取 loop_closing.with_height）
         double height_constraint_gain_ = 1.0;    // 修正增益：z += gain * clamp(map_height_ - z, ±tol)
         double height_constraint_tol_ = 0.3;     // 软皮带半宽(m)；0 = 完全锁定
 
-        /// 个人修改（方案C）：地图地面健康度自检（Init 时按已加载地图做一次平面拟合）
+        // 个人修改（方案C）：地图地面健康度自检（Init 时按已加载地图做一次平面拟合）
         bool map_level_check_enable_ = true;     // 是否在 Init 时自检
         double map_level_warn_deg_ = 2.0;        // 地面相对水平面的倾角超过该值即 WARNING（建议重建地图）
         double map_level_radius_ = 25.0;         // 只统计起点附近该半径内的地面点（m）
 
-        /// 个人修改（方案C）：force_2d 时是否也把 z 归零（原行为），默认 false ——
-        ///   原来 force_2d 会把 z 直接置 0（那是"2D 导航、地图原点在地面"的布局假设）；
-        ///   本平台地图原点在 IMU 处、且路线可能有坡度，z 归零会让定位整体偏低。
-        ///   现在默认保留匹配出的 z（再由 height_constraint 约束），需要老行为时置 true。
+        // 个人修改（方案C）：force_2d 时是否也把 z 归零（原行为），默认 false ——
+        //   原来 force_2d 会把 z 直接置 0（那是"2D 导航、地图原点在地面"的布局假设）；
+        //   本平台地图原点在 IMU 处、且路线可能有坡度，z 归零会让定位整体偏低。
+        //   现在默认保留匹配出的 z（再由 height_constraint 约束），需要老行为时置 true。
         bool force_2d_zero_z_ = false;
 
-        /// 点云过滤
+        // 点云过滤
         // float filter_z_min_ = -1.0;
         float filter_z_max_ = 30.0;
         // float filter_intensity_min_ = 10.0;
         // float filter_intensity_max_ = 100.0;
 
-        /// 地图配置
+        // 地图配置
         TiledMap::Options map_option_ = TiledMap::Options();
 
         // 动态图层更新相关
@@ -106,22 +106,22 @@ class LidarLoc {
     explicit LidarLoc(Options options = Options());
     virtual ~LidarLoc();
 
-    /// 初始化
+    // 初始化
     bool Init(const std::string& config_path);
 
-    /// 处理 lidar odom 消息
+    // 处理 lidar odom 消息
     bool ProcessLO(const NavState& state);
 
-    /// 处理拼接后点云
+    // 处理拼接后点云
     bool ProcessCloud(CloudPtr cloud_input);
 
-    /// 处理DR状态
+    // 处理DR状态
     bool ProcessDR(const NavState& state);
 
-    /// 获取位姿
+    // 获取位姿
     NavState GetState();
 
-    /// 设置当前定位状态标志位
+    // 设置当前定位状态标志位
     void SetInitRltState();
 
     /**
@@ -132,19 +132,19 @@ class LidarLoc {
      */
     bool TryOtherSolution(CloudPtr input, SE3& pose);
 
-    /// 使用功能点初始化
-    /// @param wide_seed_search 个人修改（2026-10-01）：为 true 时先对种子做"粗分辨率 + 小范围 yaw 搜索"
-    ///        再进入细分辨率配准 —— 专用于【手动点选 / 外部给定】的初始位姿，用于吸收点击延迟
-    ///        与朝向误差；功能点(start/recover)等普通初始化传 false，行为与修改前完全一致。
+    // 使用功能点初始化
+    // @param wide_seed_search 个人修改（2026-10-01）：为 true 时先对种子做"粗分辨率 + 小范围 yaw 搜索"
+    //        再进入细分辨率配准 —— 专用于【手动点选 / 外部给定】的初始位姿，用于吸收点击延迟
+    //        与朝向误差；功能点(start/recover)等普通初始化传 false，行为与修改前完全一致。
     bool InitWithFP(CloudPtr input, const SE3& fp_pose, bool wide_seed_search = false);
 
-    /// 更新全局地图
+    // 更新全局地图
     bool UpdateGlobalMap();
 
-    /// @brief 定位是否已经成功初始化
+    // @brief 定位是否已经成功初始化
     bool LocInited();
 
-    /// @brief 激光定位重置接口
+    // @brief 激光定位重置接口
     void ResetLastPose(const SE3& last_pose);
 
     /**
@@ -158,13 +158,13 @@ class LidarLoc {
      */
     bool Localize(SE3& pose, double& confidence, CloudPtr input, CloudPtr output, bool use_rough_res = false);
 
-    /// 设置UI
+    // 设置UI
     void SetUI(std::shared_ptr<ui::PangolinWindow> ui) { ui_ = ui; }
 
-    /// 设置init pose
+    // 设置init pose
     void SetInitialPose(SE3 init_pose);
 
-    /// 获取定位结果
+    // 获取定位结果
     LocalizationResult GetLocalizationResult() {
         UL lock(result_mutex_);
         return localization_result_;
@@ -172,7 +172,7 @@ class LidarLoc {
 
     void Finish();
 
-    /// 激光定位是否认为LO有效
+    // 激光定位是否认为LO有效
     bool LidarLocThinkLOReliable() { return lo_reliable_; }
 
    private:
@@ -231,11 +231,11 @@ class LidarLoc {
 
     bool CheckLidarOdomValid(const SE3& current_pose_esti, double& delta_posi);
 
-    /// 个人修改（方案C）：在 Align() 里对最终位姿施加"高度约束"（z 拉回 map_height_，见 Options 注释）
+    // 个人修改（方案C）：在 Align() 里对最终位姿施加"高度约束"（z 拉回 map_height_，见 Options 注释）
     void ApplyHeightConstraint(SE3& pose, const char* tag);
 
-    /// 个人修改（方案C）：地图地面健康度自检：对起点附近的地面点做平面拟合，
-    ///   给出地面倾角/高度并打日志（倾角过大 ⇒ 地图是倾斜的 ⇒ 定位 z 必然漂移，需要重建地图）
+    // 个人修改（方案C）：地图地面健康度自检：对起点附近的地面点做平面拟合，
+    //   给出地面倾角/高度并打日志（倾角过大 ⇒ 地图是倾斜的 ⇒ 定位 z 必然漂移，需要重建地图）
     void CheckMapLevel();
 
     // 成员变量  ==========================================================================
@@ -292,7 +292,7 @@ class LidarLoc {
     TimedPose last_dyn_upd_pose_;  // 上次更新动态图层时使用的位姿
     SE3 current_abs_pose_;         // 本次的绝对定位
     bool last_abs_pose_set_ = false;
-    double current_score_ = 1e5;  /// 设一个大分值，若定位一开始就匹配失败，则可以直接用GPS重置
+    double current_score_ = 1e5;  // 设一个大分值，若定位一开始就匹配失败，则可以直接用GPS重置
     int match_fail_count_ = 0;
     int static_count_ = 0;
 
@@ -308,7 +308,7 @@ class LidarLoc {
     std::mutex dr_pose_mutex_;
     std::deque<NavState> dr_pose_queue_;
 
-    /// 功能点初始化的记录
+    // 功能点初始化的记录
     std::vector<SE3> fp_init_fail_pose_vec_;
     double fp_last_tried_time_ = 0;
 

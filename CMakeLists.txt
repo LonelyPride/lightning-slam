@@ -24,7 +24,13 @@ if (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif ()
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
+# 本机构建时把可执行文件写到源码树 bin/（仓库里跟踪的 x86-64 调试二进制）。
+# 个人修改（2026-10-09，aarch64 交叉编译支持）：交叉编译产出的 aarch64 ELF 不能覆盖它们，
+# 因此交叉构建只输出到 build 目录，由 src/app 的 install(TARGETS ...) 负责拷贝到
+# install/lib/lightning。详见 doc/cross_compile_aarch64.md。
+if (NOT CMAKE_CROSSCOMPILING)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
+endif ()
 # set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/libs)
 # set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/libs)
 
@@ -55,8 +61,23 @@ install(DIRECTORY config
         DESTINATION lib/${PROJECT_NAME}/
 )
 
+# 个人修改（2026-10-09，map_manager_3d 对接）：把 launch/ 装到 share/lightning/launch，
+# 让 <pkg> 形式的 launch 命令可用（ros2 launch 会在包 share 目录里递归查找 launch 文件）：
+#     ros2 launch lightning loc_online.launch.py  config:=<loc_*.yaml>
+#     ros2 launch lightning slam_online.launch.py config:=<slam.yaml>
+# map_manager_3d 的 map_manager_3d_node.cpp::spawn_mode() 就是拼这两条命令启动建图/定位进程的。
+install(DIRECTORY launch
+        DESTINATION share/${PROJECT_NAME}/
+)
+
 add_subdirectory(thirdparty/livox_ros_driver)
 
 add_subdirectory(src)
+
+# 个人修改（2026-10-09，aarch64 交叉编译支持）：把常用 python 小工具一起装进包里，
+# 上板后可在 $(ros2 pkg prefix lightning)/lib/lightning/ 下直接调用。
+install(PROGRAMS scripts/nav_manager_map_export.py
+        DESTINATION lib/${PROJECT_NAME}
+)
 
 ament_package()

@@ -9,7 +9,7 @@
 
 namespace lightning {
 
-/// 带时间的pose
+// 带时间的pose
 struct TimedPose {
     TimedPose() {}
     TimedPose(double t, const SE3& pose) : timestamp_(t), pose_(pose) {}

@@ -5,10 +5,10 @@
 #ifndef MIAO_BLOCK_SOLVER_H
 #define MIAO_BLOCK_SOLVER_H
 
-/// 模板化的solver
-/// Block solver 是 Solver 的子类，实际完成solver中的各种计算
-/// 同时持有linear solver的指针，用linear solver计算Ax=GetB
-/// NOTE: 在没有pose, landmark概念的问题中，尽量不要定义pose, landmark的概念
+// 模板化的solver
+// Block solver 是 Solver 的子类，实际完成solver中的各种计算
+// 同时持有linear solver的指针，用linear solver计算Ax=GetB
+// NOTE: 在没有pose, landmark概念的问题中，尽量不要定义pose, landmark的概念
 
 #include "core/common/config.h"
 #include "core/sparse/sparse_block_matrix_diagonal.h"
@@ -39,7 +39,7 @@ struct BlockSolverTraits {
     typedef LinearSolver<PoseMatrixType> LinearSolverType;
 };
 
-/// Block Solver X 的特化
+// Block Solver X 的特化
 /**
  * \brief traits to summarize the properties of the dynamic size optimization
  * problem
@@ -93,19 +93,19 @@ class BlockSolver : public Solver {
 
     bool Init(Optimizer* optimizer) override;
 
-    /// 初始化时调用，建立各矩阵块的数据
+    // 初始化时调用，建立各矩阵块的数据
     bool BuildStructure(bool zeroBlocks) override;
 
-    /// 原生模式下建立问题结构
+    // 原生模式下建立问题结构
     bool BuildStructureFromRaw(bool zero_blocks);
 
-    /// 增量模式下建立问题结构
+    // 增量模式下建立问题结构
     bool BuildStructureInc(bool zero_blocks);
 
-    /// 每次迭代时调用的函数,计算当前这次迭代中的jacobian
+    // 每次迭代时调用的函数,计算当前这次迭代中的jacobian
     bool BuildSystem() override;
 
-    /// 建立H, b矩阵并交给linear solver
+    // 建立H, b矩阵并交给linear solver
     bool Solve() override;
 
     bool SetLambda(double lambda, bool backup) override;
@@ -125,7 +125,7 @@ class BlockSolver : public Solver {
 
     OptimizerConfig config_;
 
-    /// pose to pose 的矩阵块，解稠密问题，只求解这一部分的计算
+    // pose to pose 的矩阵块，解稠密问题，只求解这一部分的计算
     std::unique_ptr<SparseBlockMatrix<PoseMatrixType>> Hpp_;  // pose to pose
 
     std::unique_ptr<SparseBlockMatrix<LandmarkMatrixType>> Hll_;      // landmark to landmark

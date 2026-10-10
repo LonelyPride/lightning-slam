@@ -32,7 +32,7 @@
 namespace pangolin
 {
 
-/// Encapsulates OpenGl Viewport.
+// Encapsulates OpenGl Viewport.
 struct PANGOLIN_EXPORT Viewport
 {
     Viewport() : l(0),b(0),w(0),h(0) {}

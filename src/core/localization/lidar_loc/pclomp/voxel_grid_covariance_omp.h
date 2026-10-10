@@ -201,11 +201,11 @@ class VoxelGridCovariance : public pcl::VoxelGrid<PointT> {
      */
     inline const HashMap &getLeaves() { return leaves_; }
 
-    /// added by xiang
-    /// add a target point cloud into voxel grid
+    // added by xiang
+    // add a target point cloud into voxel grid
     void AddTarget(PointCloudPtr target);
 
-    /// compute the cov and inv cov of each grid, paralleled
+    // compute the cov and inv cov of each grid, paralleled
     void ComputeTargetGrids();
 
    protected:

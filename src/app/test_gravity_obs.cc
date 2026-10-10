@@ -28,8 +28,8 @@ using namespace lightning;
 
 namespace {
 
-/// 与 laser_mapping.cc::AccAsGravityObsModel 完全一致的观测模型（此处复刻一份，便于独立自检；
-/// 若主流程的公式有改动，请同步这里，否则本测试就失去意义）
+// 与 laser_mapping.cc::AccAsGravityObsModel 完全一致的观测模型（此处复刻一份，便于独立自检；
+// 若主流程的公式有改动，请同步这里，否则本测试就失去意义）
 void GravityObsModel(NavState &s, ESKF::CustomObservationModel &obs, const Vec3d &a_body_meas, double sigma_deg) {
     obs.HTH_.setZero();
     obs.HTr_.setZero();
@@ -48,7 +48,7 @@ void GravityObsModel(NavState &s, ESKF::CustomObservationModel &obs, const Vec3d
     obs.lidar_residual_mean_ = r.norm();
 }
 
-/// 姿态误差（度）：R_est 与 R_true 之间的夹角
+// 姿态误差（度）：R_est 与 R_true 之间的夹角
 double RotErrorDeg(const SO3 &R_est, const SO3 &R_true) { return (R_true.inverse() * R_est).log().norm() * 180.0 / M_PI; }
 
 }  // namespace
@@ -57,12 +57,12 @@ int main(int argc, char **argv) {
     google::InitGoogleLogging(argv[0]);
     FLAGS_logtostderr = true;
 
-    /// 合成真值：车体水平（R_true = I），IMU 测到的比力在 IMU 系里就是 (0,0,g)
+    // 合成真值：车体水平（R_true = I），IMU 测到的比力在 IMU 系里就是 (0,0,g)
     const SO3 R_true = SO3();
     const Vec3d g_world(0, 0, -constant::G_m_s2);  // 只做参考
     const Vec3d a_body_meas = R_true.inverse() * Vec3d(0, 0, constant::G_m_s2);
 
-    /// 被估状态：姿态被摆歪 20°（如世界系初始化被运动加速度污染导致的整体倾斜）
+    // 被估状态：姿态被摆歪 20°（如世界系初始化被运动加速度污染导致的整体倾斜）
     const double init_tilt_deg = 20.0;
     NavState x0;
     x0.rot_ = SO3::exp(Vec3d(init_tilt_deg * M_PI / 180.0, 0, 0));
@@ -81,7 +81,7 @@ int main(int argc, char **argv) {
     ESKF kf(x0);
     kf.Init(opt);
 
-    /// 初值 P：与 ImuProcess::IMUInit() 收紧后的初值一致
+    // 初值 P：与 ImuProcess::IMUInit() 收紧后的初值一致
     ESKF::CovType P = ESKF::CovType::Zero();
     P.block<3, 3>(NavState::kPosIdx, NavState::kPosIdx) = 0.1 * 0.1 * Mat3d::Identity();
     P.block<3, 3>(NavState::kRotIdx, NavState::kRotIdx) = (1.0 * M_PI / 180.0) * (1.0 * M_PI / 180.0) * Mat3d::Identity();
@@ -90,7 +90,7 @@ int main(int argc, char **argv) {
     P.block<3, 3>(NavState::kBaIdx, NavState::kBaIdx) = 0.05 * 0.05 * Mat3d::Identity();
     kf.ChangeP(P);
 
-    /// 过程噪声（与 ImuProcess 构造函数同量级）
+    // 过程噪声（与 ImuProcess 构造函数同量级）
     ESKF::ProcessNoiseType Q = ESKF::ProcessNoiseType::Zero();
     Q.diagonal() << 1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-5, 1e-5, 1e-5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
 
@@ -130,10 +130,10 @@ int main(int argc, char **argv) {
     LOG(INFO) << "单帧最大误差增量 = " << max_increase_deg << " deg @ frame " << max_increase_frame
               << "（判据：<= 0.2 deg；符号写反会表现为每帧增大数度并发散）";
 
-    /// 判据说明：
-    ///   · 姿态误差必须收敛（最终 < 0.5°）—— 收敛即证明 J/r 符号、姿态块位置(第3~5维)、权重都正确；
-    ///   · 允许单帧有极小的"过冲"（迭代 EKF 对 sin 型残差线性化，20° 初值时首帧会有 ~0.05° 过冲），
-    ///     但不允许明显持续增大（符号错误时每帧会增大数度）。
+    // 判据说明：
+    //   · 姿态误差必须收敛（最终 < 0.5°）—— 收敛即证明 J/r 符号、姿态块位置(第3~5维)、权重都正确；
+    //   · 允许单帧有极小的"过冲"（迭代 EKF 对 sin 型残差线性化，20° 初值时首帧会有 ~0.05° 过冲），
+    //     但不允许明显持续增大（符号错误时每帧会增大数度）。
     int ret = 0;
     if (max_increase_deg > 0.2) {
         LOG(ERROR) << "自检失败：姿态误差单帧增大 " << max_increase_deg << " deg（> 0.2），观测符号约定可能写反了";
@@ -146,7 +146,7 @@ int main(int argc, char **argv) {
                   << " deg，重力观测(符号/维度/权重/步长)约定正确";
     }
 
-    /// 附带检查 ESKF 维度：状态 15 维（含加计零偏 ba）、过程噪声 15 维
+    // 附带检查 ESKF 维度：状态 15 维（含加计零偏 ba）、过程噪声 15 维
     static_assert(NavState::dim == 15, "NavState 应为 15 维（pos/rot/vel/bg/ba）");
     static_assert(NavState::kBaIdx == 12, "加计零偏 ba 应从第 12 维开始");
     static_assert(ESKF::state_dim_ == 15, "ESKF 状态维度应与 NavState 一致");

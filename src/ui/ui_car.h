@@ -4,15 +4,15 @@
 
 namespace lightning::ui {
 
-/// 在UI里显示的小车
+// 在UI里显示的小车
 class UiCar {
    public:
     UiCar(const Vec3f& color) : color_(color) {}
 
-    /// 设置小车 Pose，重设显存中的点
+    // 设置小车 Pose，重设显存中的点
     void SetPose(const SE3& pose);
 
-    /// 渲染小车
+    // 渲染小车
     void Render();
 
    private:

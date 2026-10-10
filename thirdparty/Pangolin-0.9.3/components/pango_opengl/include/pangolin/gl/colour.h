@@ -34,7 +34,7 @@
 namespace pangolin
 {
 
-/// Represent OpenGL floating point colour: Red, Green and Blue with alpha.
+// Represent OpenGL floating point colour: Red, Green and Blue with alpha.
 struct Colour
 {
     inline static Colour White() {
@@ -59,19 +59,19 @@ struct Colour
         );
     }
 
-    /// Default constructs white.
+    // Default constructs white.
     inline Colour()
         : red(1.0f), green(1.0f), blue(1.0f), alpha(1.0f)
     {
     }
 
-    /// Construct from component values
+    // Construct from component values
     inline Colour(const float red, const float green, const float blue, const float alpha = 1.0f)
         : red(red), green(green), blue(blue), alpha(alpha)
     {
     }
 
-    /// Construct from rgba array.
+    // Construct from rgba array.
     inline Colour(const float rgba[4])
     {
         r = rgba[0];
@@ -80,22 +80,22 @@ struct Colour
         a = rgba[3];
     }
 
-    /// Return pointer to OpenGL compatible RGBA array.
+    // Return pointer to OpenGL compatible RGBA array.
     inline float* Get()
     {
         return c;
     }
 
-    /// Return this colour with alpha adjusted.
+    // Return this colour with alpha adjusted.
     inline Colour WithAlpha(const float alpha)
     {
         return Colour(r,g,b,alpha);
     }
 
-    /// Construct from HSV Colour
-    /// @param hue Colour hue in range [0,1]
-    /// @param sat Saturation in range [0,1]
-    /// @param val Value / Brightness in range [0,1].
+    // Construct from HSV Colour
+    // @param hue Colour hue in range [0,1]
+    // @param sat Saturation in range [0,1]
+    // @param val Value / Brightness in range [0,1].
     static inline Colour Hsv(const float hue, const float sat = 1.0f, const float val = 1.0f, const float alpha = 1.0f)
     {
           const float h = 6.0f * hue;
@@ -135,21 +135,21 @@ struct Colour
 
 };
 
-/// A ColourWheel is like a continuous colour palate that can be sampled.
-/// In the future, different ColourWheels will be supported, but this one
-/// is based on sampling hues in HSV colourspace. An indefinite number of
-/// unique colours are sampled using the golden angle.
+// A ColourWheel is like a continuous colour palate that can be sampled.
+// In the future, different ColourWheels will be supported, but this one
+// is based on sampling hues in HSV colourspace. An indefinite number of
+// unique colours are sampled using the golden angle.
 class ColourWheel
 {
 public:
-    /// Construct ColourWheel with Saturation, Value and Alpha constant.
+    // Construct ColourWheel with Saturation, Value and Alpha constant.
     inline ColourWheel(float saturation = 0.5f, float value = 1.0f, float alpha = 1.0f)
         : unique_colours(0), sat(saturation), val(value), alpha(alpha)
     {
 
     }
 
-    /// Use Golden ratio (/angle) to pick well spaced colours.
+    // Use Golden ratio (/angle) to pick well spaced colours.
     inline Colour GetColourBin(int i) const
     {
         float hue = i * 0.5f * (3.0f - sqrt(5.0f));
@@ -157,13 +157,13 @@ public:
         return Colour::Hsv(hue,sat,val,alpha);
     }
 
-    /// Return next unique colour from ColourWheel.
+    // Return next unique colour from ColourWheel.
     inline Colour GetUniqueColour()
     {
         return GetColourBin(unique_colours++);
     }
 
-    /// Reset colour wheel counter to initial state
+    // Reset colour wheel counter to initial state
     inline void Reset() {
       unique_colours = 0;
     }

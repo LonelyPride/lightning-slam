@@ -23,7 +23,7 @@ class MessageSync {
 
     MessageSync(Callback cb) : callback_(cb) {}
 
-    /// 处理 scan 数据
+    // 处理 scan 数据
     void ProcessScan(CloudPtr scan) {
         UL lock(scan_mutex_);
         double timestamp = math::ToSec(scan->header.stamp);
@@ -76,7 +76,7 @@ class MessageSync {
     }
 
    private:
-    /// 尝试同步odom和scan
+    // 尝试同步odom和scan
     inline bool Sync() {
         UL lock_odom(odom_mutex_);
         UL lock(imu_mutex_);
@@ -90,7 +90,7 @@ class MessageSync {
         double curr_time = math::ToSec(measures.scan_raw_->header.stamp);
         double curr_time_end = curr_time + lo::lidar_time_interval;
 
-        /// 查找最近时刻的imu
+        // 查找最近时刻的imu
         bool found = false;
         double best_dt[2] = {1e9, 1e9};
         IMUPtr best = nullptr;
@@ -147,7 +147,7 @@ class MessageSync {
             if (bbreak) break;
         }
 
-        /// 找到了
+        // 找到了
         lock.unlock();  // callback阶段不需要再锁定IMU
         lock_odom.unlock();
         if (callback_) {

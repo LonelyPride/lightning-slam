@@ -37,25 +37,25 @@ class PangolinWindowImpl {
     PangolinWindowImpl(PangolinWindowImpl &&) = delete;
     PangolinWindowImpl &operator=(PangolinWindowImpl &&) = delete;
 
-    /// 初始化，创建可用于渲染的点云和轨迹
+    // 初始化，创建可用于渲染的点云和轨迹
     bool Init();
 
     void Reset(const std::vector<Keyframe::Ptr> &keyframes);
 
-    /// 注销
+    // 注销
     bool DeInit();
 
-    /// 渲染所有信息
+    // 渲染所有信息
     void Render();
 
-    /// 获取窗口名称
+    // 获取窗口名称
     std::string GetWindowName() const;
 
    public:
-    /// 后台渲染线程
+    // 后台渲染线程
     std::thread render_thread_;
 
-    /// 一些辅助的锁和原子变量
+    // 一些辅助的锁和原子变量
     std::mutex mtx_map_cloud_;
     std::mutex mtx_current_scan_;
     std::mutex mtx_nav_state_;
@@ -85,7 +85,7 @@ class PangolinWindowImpl {
     std::map<int, CloudPtr> cloud_global_map_;
     std::map<int, CloudPtr> cloud_dynamic_map_;
 
-    /// 滤波器状态
+    // 滤波器状态
     Sophus::SE3d pose_;
     double confidence_;
     Vec3d vel_;
@@ -97,9 +97,9 @@ class PangolinWindowImpl {
     int max_size_of_current_scan_ = 200;  // 当前扫描数据保留多少个
     std::vector<std::shared_ptr<Keyframe>> all_keyframes_;
 
-    //////////////////////////////// 以下和render相关 ///////////////////////////
+    ////////////////////// 以下和render相关 //////////////////
    private:
-    /// 创建OpenGL Buffers
+    // 创建OpenGL Buffers
     void AllocateBuffer();
     void ReleaseBuffer();
 
@@ -107,7 +107,7 @@ class PangolinWindowImpl {
 
     void DrawAll();  // 作图：画定位窗口
 
-    /// 渲染点云，调用各种Update函数
+    // 渲染点云，调用各种Update函数
     void RenderClouds();
     bool UpdateGlobalMap();
     bool UpdateDynamicMap();
@@ -117,7 +117,7 @@ class PangolinWindowImpl {
     void RenderLabels();
 
    private:
-    /// 窗口layout相关
+    // 窗口layout相关
     int win_width_ = 1920;
     int win_height_ = 1080;
     static constexpr float cam_focus_ = 5000;
@@ -142,7 +142,7 @@ class PangolinWindowImpl {
     // camera
     pangolin::OpenGlRenderState s_cam_main_;
 
-    /// cloud rendering
+    // cloud rendering
     ui::UiCar backend_car_{Vec3f(0.2, 0.2, 0.8)};   // 白色车
     ui::UiCar frontend_car_{Vec3f(0.2, 0.2, 0.8)};  // 白色车
     ui::UiCar pred_car_{Vec3f(0.8, 0.5, 0.8)};      // 白色车

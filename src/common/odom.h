@@ -9,7 +9,7 @@
 
 namespace lightning {
 
-/// 内部定义的里程计观测，如果需要ROS，则从odom的消息转换过来
+// 内部定义的里程计观测，如果需要ROS，则从odom的消息转换过来
 struct Odom {
     double timestamp_ = 0;
     SE3 pose;

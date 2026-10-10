@@ -28,7 +28,7 @@ void UiCar::Render() {
     glLineWidth(5.0);
     glBegin(GL_LINES);
 
-    /// x -红, y-绿 z-蓝
+    // x -红, y-绿 z-蓝
     glColor3f(color_[0], color_[1], color_[2]);
     glVertex3f(pts_[0][0], pts_[0][1], pts_[0][2]);
     glVertex3f(pts_[1][0], pts_[1][1], pts_[1][2]);

@@ -223,7 +223,7 @@ bool BlockSolver<Traits>::BuildStructureFromRaw(bool zero_blocks) {
     D_inv_schur_->Diagonal().resize(landmarkIdx);
     Hpl_->FillSparseBlockMatrixCCS(*Hpl_CCS_);
 
-    /// 啧啧
+    // 啧啧
     for (const auto& v : optimizer_->IndexMapping()) {
         if (!v->Marginalized()) {
             continue;
@@ -263,12 +263,12 @@ bool BlockSolver<Traits>::BuildStructureFromRaw(bool zero_blocks) {
 
 template <typename Traits>
 bool BlockSolver<Traits>::BuildStructureInc(bool zero_blocks) {
-    /// 增量模式下没有landmark，且省略历史过程中的index building
+    // 增量模式下没有landmark，且省略历史过程中的index building
     size_t sparseDim = size_poses_;
 
     int num_all_vertex = optimizer_->IndexMapping().size();
 
-    /// for inc
+    // for inc
     std::vector<int> new_block_pose_indices;
     new_block_pose_indices.reserve(num_all_vertex);
 
@@ -294,7 +294,7 @@ bool BlockSolver<Traits>::BuildStructureInc(bool zero_blocks) {
         Hpp_->SetBlockIndexInc(new_block_pose_indices, new_block_pose_indices);
 
         if (config_.incremental_mode_ && config_.max_vertex_size_ >= 0) {
-            /// Hpp 不清空的话影响lambda之类的求解
+            // Hpp 不清空的话影响lambda之类的求解
             Hpp_->Clear();
         }
     }
@@ -442,7 +442,7 @@ bool BlockSolver<Traits>::Solve() {
         b_schur_[i] -= coeffs_[i];
     }
 
-    /// linear solver 只解pose部分
+    // linear solver 只解pose部分
     bool solvedPoses = true;
     solvedPoses = linear_solver_->Solve(*Hschur_, x_.data(), b_schur_.data());
 
@@ -489,7 +489,7 @@ bool BlockSolver<Traits>::BuildSystem() {
 
         std::for_each(std::execution::par_unseq, optimizer_->ActiveEdges().begin(), optimizer_->ActiveEdges().end(),
                       [](const auto& e) {
-                          /// 线性化，计算jacobian，可以并行
+                          // 线性化，计算jacobian，可以并行
                           e->LinearizeOplus();
                           // 求AtA 和 AtB ，这个也可以并行，但需要锁每个block
                           e->ConstructQuadraticForm();
@@ -508,7 +508,7 @@ bool BlockSolver<Traits>::BuildSystem() {
 
         std::for_each(std::execution::seq, optimizer_->ActiveEdges().begin(), optimizer_->ActiveEdges().end(),
                       [](const auto& e) {
-                          /// 线性化，计算jacobian，可以并行
+                          // 线性化，计算jacobian，可以并行
                           e->LinearizeOplus();
                           // 求AtA 和 AtB ，这个也可以并行，但需要锁每个block
                           e->ConstructQuadraticForm();
@@ -582,7 +582,7 @@ bool BlockSolver<Traits>::Init(Optimizer* optimizer) {
     config_ = optimizer->GetConfig();
 
     if (!config_.incremental_mode_) {
-        /// 不在增量模式下，就清空整个Hessian
+        // 不在增量模式下，就清空整个Hessian
         if (Hpp_) {
             Hpp_->Clear();
         }

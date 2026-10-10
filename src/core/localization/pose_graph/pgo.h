@@ -33,21 +33,21 @@ class PGO {
     PGO();
     ~PGO();
 
-    /// 向外输出全局定位结果
+    // 向外输出全局定位结果
     using GlobalOutputHandleFunction = std::function<void(const LocalizationResult& output_result)>;
     void SetGlobalOutputHandleFunction(GlobalOutputHandleFunction handle);
     void SetHighFrequencyGlobalOutputHandleFunction(GlobalOutputHandleFunction handle);
 
-    /// 处理lidarOdom信息
+    // 处理lidarOdom信息
     bool ProcessDR(const NavState& dr_result);
 
-    /// 处理lidarOdom信息
+    // 处理lidarOdom信息
     bool ProcessLidarOdom(const NavState& lio_result);
 
-    /// 接收激光定位信息（触发PGO优化）
+    // 接收激光定位信息（触发PGO优化）
     bool ProcessLidarLoc(const LocalizationResult& loc_result);
 
-    /// 处理外部组装好的一个PGO frame，将触发优化（仅在单测时外部直接调用）
+    // 处理外部组装好的一个PGO frame，将触发优化（仅在单测时外部直接调用）
     bool ProcessPGOFrame(std::shared_ptr<PGOFrame> frame);
 
     std::shared_ptr<PGOFrame> GetCurrentPGOFrame() const;
@@ -55,13 +55,13 @@ class PGO {
     // 高频查询定位，使用DR做递推，多线程安全
     bool GetCurrentLocalization() const;
 
-    /// 重置PGO
+    // 重置PGO
     bool Reset();
 
-    /// 向外发布位姿
+    // 向外发布位姿
     void PubResult();
 
-    /// debug stuffs
+    // debug stuffs
     void SetDebug(bool debug = true);
     void LogWindowState();
 

@@ -104,19 +104,19 @@ class LocSystem {
     explicit LocSystem(Options options);
     ~LocSystem();
 
-    /// 初始化，地图路径在yaml里配置
+    // 初始化，地图路径在yaml里配置
     bool Init(const std::string& yaml_path);
 
-    /// 设置初始化位姿
-    /// NOTE 个人修改（坐标系约定）：本接口传入的必须是【雷达系】在地图下的位姿 T_map_lidar，
-    ///      即 lidar_loc 内部用来对点云做变换的那个位姿；不要直接传车辆/IMU 位姿，
-    ///      二者之间还差 lidar→IMU 外参与 IMU→车辆安装角两级外参。
-    ///      若车辆就停在建图起点，推荐不要调用本函数，改用 Start() 由地图功能点 start 初始化。
+    // 设置初始化位姿
+    // NOTE 个人修改（坐标系约定）：本接口传入的必须是【雷达系】在地图下的位姿 T_map_lidar，
+    //      即 lidar_loc 内部用来对点云做变换的那个位姿；不要直接传车辆/IMU 位姿，
+    //      二者之间还差 lidar→IMU 外参与 IMU→车辆安装角两级外参。
+    //      若车辆就停在建图起点，推荐不要调用本函数，改用 Start() 由地图功能点 start 初始化。
     void SetInitPose(const SE3& pose);
 
-    /// 个人修改：仅"开始处理数据"，不注入任何外部初始位姿。
-    /// 初始位姿交给地图 index.txt 里的功能点 start（由 lidar_loc 的 init_with_fp 完成），
-    /// 与 run_loc_offline 的行为一致，可避免用错坐标系下的种子把初始化带偏。
+    // 个人修改：仅"开始处理数据"，不注入任何外部初始位姿。
+    // 初始位姿交给地图 index.txt 里的功能点 start（由 lidar_loc 的 init_with_fp 完成），
+    // 与 run_loc_offline 的行为一致，可避免用错坐标系下的种子把初始化带偏。
     void Start();
 
     // =========================================================================
@@ -134,54 +134,54 @@ class LocSystem {
     //    "init confidence too low ... reject this init candidate" 并按候选顺序继续尝试）。
     // =========================================================================
 
-    /// 手动初始位姿（语义 = 车辆 base_link 系在地图下的位姿 T_map_vehicle），内部换算成 T_map_lidar
+    // 手动初始位姿（语义 = 车辆 base_link 系在地图下的位姿 T_map_vehicle），内部换算成 T_map_lidar
     void SetInitialPoseFromVehicle(const Eigen::Quaterniond& q, const Eigen::Vector3d& t);
 
-    /// 手动初始位姿（语义 = 雷达系在地图下的位姿 T_map_lidar，与 --init_pose / 功能点 start 一致）
+    // 手动初始位姿（语义 = 雷达系在地图下的位姿 T_map_lidar，与 --init_pose / 功能点 start 一致）
     void SetInitialPoseFromLidar(const Eigen::Quaterniond& q, const Eigen::Vector3d& t);
 
-    /// 当前使用的手动初始位姿话题名（run_loc_online 启动时会打印出来）
+    // 当前使用的手动初始位姿话题名（run_loc_online 启动时会打印出来）
     const std::string& InitialPoseTopic() const { return initial_pose_topic_; }
 
-    /// 处理IMU
+    // 处理IMU
     void ProcessIMU(const lightning::IMUPtr& imu);
 
-    /// 处理点云
+    // 处理点云
     void ProcessLidar(const sensor_msgs::msg::PointCloud2::SharedPtr& cloud);
     void ProcessLidar(const livox_ros_driver2::msg::CustomMsg::SharedPtr& cloud);
 
-    /// 实时模式下的spin
+    // 实时模式下的spin
     void Spin();
 
    private:
     Options options_;
 
-    /// ---- 个人修改（2026-10-01）：栅格地图话题发布（system.publish_map.*）----
-    /// 发布线程主体：按 system.publish_map.interval 定时构造并发布 OccupancyGrid
+    // ---- 个人修改（2026-10-01）：栅格地图话题发布（system.publish_map.*）----
+    // 发布线程主体：按 system.publish_map.interval 定时构造并发布 OccupancyGrid
     void MapPublishLoop();
 
-    /// 由已保存的 map.pgm + map.yaml 构造消息。读取/解析失败返回 false
+    // 由已保存的 map.pgm + map.yaml 构造消息。读取/解析失败返回 false
     bool LoadGridMsg(const std::string& pgm_path, const std::string& yaml_path, nav_msgs::msg::OccupancyGrid& msg);
 
-    /// 栅格地图目录：publish_map.path 非空用它，否则用 yaml 的 system.map_path
+    // 栅格地图目录：publish_map.path 非空用它，否则用 yaml 的 system.map_path
     std::string ResolveMapDir() const;
 
-    /// ---- 个人修改（2026-10-01）：TF 发布（接上车上已有的 TF 树）----
-    /// 定位结果的 TF 回调：
-    ///   mode=map_odom 时，先查车上已有的 odom→base_link，再合成并发布 map→odom；
-    ///   mode=map_base 时，直接转发 map→base_link（老行为）。
+    // ---- 个人修改（2026-10-01）：TF 发布（接上车上已有的 TF 树）----
+    // 定位结果的 TF 回调：
+    //   mode=map_odom 时，先查车上已有的 odom→base_link，再合成并发布 map→odom；
+    //   mode=map_base 时，直接转发 map→base_link（老行为）。
     void PublishTf(const geometry_msgs::msg::TransformStamped& pose);
 
-    /// 创建 tf2 监听（Buffer + TransformListener）。监听自带独立线程，不需要额外 spin。
+    // 创建 tf2 监听（Buffer + TransformListener）。监听自带独立线程，不需要额外 spin。
     void StartTfListener();
 
     TfOptions tf_options_;
 
-    /// 查询车上 TF 用（tf2 Buffer 缓存最近 10 s，足够覆盖定位结果与车上 TF 的时标差）
+    // 查询车上 TF 用（tf2 Buffer 缓存最近 10 s，足够覆盖定位结果与车上 TF 的时标差）
     std::shared_ptr<tf2_ros::Buffer> tf_buffer_ = nullptr;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_ = nullptr;
 
-    /// 日志节流状态：只在定位结果回调线程里读写（单线程），故不加锁
+    // 日志节流状态：只在定位结果回调线程里读写（单线程），故不加锁
     double tf_warn_stamp_ = -1.0;      // 上一次"查不到 odom→base_link"告警的时间戳
     bool tf_first_pub_logged_ = false;  // 第一帧 map→odom 发布成功时打一次详细日志
 
@@ -197,7 +197,7 @@ class LocSystem {
     std::atomic_bool loc_started_ = false;  // 是否开启定位
     std::atomic_bool map_loaded_ = false;   // 地图是否已载入
 
-    /// 实时模式下的ros2 node, subscribers
+    // 实时模式下的ros2 node, subscribers
     rclcpp::Node::SharedPtr node_;
     std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_ = nullptr;
 
@@ -205,7 +205,7 @@ class LocSystem {
     std::string cloud_topic_;
     std::string livox_topic_;
 
-    /// 个人修改（2026-10-01）：手动初始位姿话题（RViz "2D Pose Estimate" → /initialpose）
+    // 个人修改（2026-10-01）：手动初始位姿话题（RViz "2D Pose Estimate" → /initialpose）
     std::string initial_pose_topic_ = "/initialpose";
     bool initial_pose_is_vehicle_ = true;  // true=话题位姿语义为车辆(base_link)系 T_map_vehicle；false=雷达系 T_map_lidar
 
@@ -214,7 +214,7 @@ class LocSystem {
     rclcpp::Subscription<livox_ros_driver2::msg::CustomMsg>::SharedPtr livox_sub_ = nullptr;
     rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr initial_pose_sub_ = nullptr;
 
-    /// 个人修改：手动初始位姿话题的回调（RViz 2D Pose Estimate / 外部脚本均可）
+    // 个人修改：手动初始位姿话题的回调（RViz 2D Pose Estimate / 外部脚本均可）
     void OnInitialPose(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr& msg);
 };
 

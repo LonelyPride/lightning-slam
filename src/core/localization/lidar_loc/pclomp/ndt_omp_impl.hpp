@@ -42,7 +42,7 @@
 #ifndef PCL_REGISTRATION_NDT_OMP_IMPL_H_
 #define PCL_REGISTRATION_NDT_OMP_IMPL_H_
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 template <typename PointSource, typename PointTarget>
 pclomp::NormalDistributionsTransform<PointSource, PointTarget>::NormalDistributionsTransform()
     : target_cells_(),
@@ -105,7 +105,7 @@ pclomp::NormalDistributionsTransform<PointSource, PointTarget>::NormalDistributi
   target_cells_.setLeafSize(resolution_, resolution_, resolution_);
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 template <typename PointSource, typename PointTarget>
 void pclomp::NormalDistributionsTransform<PointSource, PointTarget>::computeTransformation(
     PointCloudSource &output, const Eigen::Matrix4f &guess) {
@@ -250,7 +250,7 @@ int omp_get_max_threads() { return 1; }
 int omp_get_thread_num() { return 0; }
   #endif
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 template <typename PointSource, typename PointTarget>
 double pclomp::NormalDistributionsTransform<PointSource, PointTarget>::computeDerivatives(
     Eigen::Matrix<double, 6, 1> &score_gradient, Eigen::Matrix<double, 6, 6> &hessian, PointCloudSource &trans_cloud,
@@ -360,7 +360,7 @@ double pclomp::NormalDistributionsTransform<PointSource, PointTarget>::computeDe
   return (score);
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 template <typename PointSource, typename PointTarget>
 void pclomp::NormalDistributionsTransform<PointSource, PointTarget>::computeAngleDerivatives(
     Eigen::Matrix<double, 6, 1> &p, bool compute_hessian) {
@@ -462,7 +462,7 @@ void pclomp::NormalDistributionsTransform<PointSource, PointTarget>::computeAngl
   }
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 template <typename PointSource, typename PointTarget>
 void pclomp::NormalDistributionsTransform<PointSource, PointTarget>::computePointDerivatives(
     Eigen::Vector3d &x, Eigen::Matrix<float, 4, 6> &point_gradient_, Eigen::Matrix<float, 24, 6> &point_hessian_,
@@ -509,7 +509,7 @@ void pclomp::NormalDistributionsTransform<PointSource, PointTarget>::computePoin
   }
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 template <typename PointSource, typename PointTarget>
 void pclomp::NormalDistributionsTransform<PointSource, PointTarget>::computePointDerivatives(
     Eigen::Vector3d &x, Eigen::Matrix<double, 3, 6> &point_gradient_, Eigen::Matrix<double, 18, 6> &point_hessian_,
@@ -552,7 +552,7 @@ void pclomp::NormalDistributionsTransform<PointSource, PointTarget>::computePoin
   }
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 template <typename PointSource, typename PointTarget>
 double pclomp::NormalDistributionsTransform<PointSource, PointTarget>::updateDerivatives(
     Eigen::Matrix<double, 6, 1> &score_gradient, Eigen::Matrix<double, 6, 6> &hessian,
@@ -607,7 +607,7 @@ double pclomp::NormalDistributionsTransform<PointSource, PointTarget>::updateDer
   return (score_inc);
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 // template<typename PointSource, typename PointTarget> void
 // pclomp::NormalDistributionsTransform<PointSource, PointTarget>::computeHessian (Eigen::Matrix<double, 6, 6> &hessian,
 //                                                                              PointCloudSource &trans_cloud,
@@ -669,7 +669,7 @@ double pclomp::NormalDistributionsTransform<PointSource, PointTarget>::updateDer
 //   }
 // }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 template <typename PointSource, typename PointTarget>
 void pclomp::NormalDistributionsTransform<PointSource, PointTarget>::updateHessian(
     Eigen::Matrix<double, 6, 6> &hessian, const Eigen::Matrix<double, 3, 6> &point_gradient_,
@@ -699,7 +699,7 @@ void pclomp::NormalDistributionsTransform<PointSource, PointTarget>::updateHessi
   }
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 template <typename PointSource, typename PointTarget>
 bool pclomp::NormalDistributionsTransform<PointSource, PointTarget>::updateIntervalMT(
     double &a_l, double &f_l, double &g_l, double &a_u, double &f_u, double &g_u, double a_t, double f_t, double g_t) {
@@ -733,7 +733,7 @@ bool pclomp::NormalDistributionsTransform<PointSource, PointTarget>::updateInter
     return (true);
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 template <typename PointSource, typename PointTarget>
 double pclomp::NormalDistributionsTransform<PointSource, PointTarget>::trialValueSelectionMT(
     double a_l, double f_l, double g_l, double a_u, double f_u, double g_u, double a_t, double f_t, double g_t) {
@@ -808,7 +808,7 @@ double pclomp::NormalDistributionsTransform<PointSource, PointTarget>::trialValu
   }
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 template <typename PointSource, typename PointTarget>
 double pclomp::NormalDistributionsTransform<PointSource, PointTarget>::computeStepLengthMT(
     const Eigen::Matrix<double, 6, 1> &x, Eigen::Matrix<double, 6, 1> &step_dir, double step_init, double step_max,

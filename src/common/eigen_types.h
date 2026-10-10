@@ -19,7 +19,7 @@
 
 namespace lightning {
 
-/// 数值类型缩写
+// 数值类型缩写
 using IdType = size_t;
 
 // pose represented as sophus structs
@@ -28,8 +28,8 @@ using SE2 = Sophus::SE2d;
 using SE3 = Sophus::SE3d;
 using SO3 = Sophus::SO3d;
 
-/// numerical types
-/// alias for eigen struct
+// numerical types
+// alias for eigen struct
 using Vec2f = Eigen::Vector2f;
 using Vec3f = Eigen::Vector3f;
 using Vec4f = Eigen::Matrix<float, 4, 1>;

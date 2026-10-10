@@ -120,14 +120,14 @@ public:
 
     void ResetView();
 
-    /// Get the current rotation applied to the texture before drawing
+    // Get the current rotation applied to the texture before drawing
     int GetThetaQuarterTurn();
-    /// Set the current rotation applied to the texture before drawing
+    // Set the current rotation applied to the texture before drawing
     virtual void SetThetaQuarterTurn(int _thetaQuarterTurn);
 
-    ///////////////////////////////////////////////////////
-    /// pangolin::Handler
-    ///////////////////////////////////////////////////////
+    /////////////////////////////////////
+    // pangolin::Handler
+    /////////////////////////////////////
 
     void Keyboard(View&, unsigned char key, int /*x*/, int /*y*/, bool pressed) override;
 
@@ -139,9 +139,9 @@ public:
 
     void Special(View& view, pangolin::InputSpecial inType, float x, float y, float p1, float p2, float /*p3*/, float /*p4*/, int /*button_state*/) override;
 
-    ///////////////////////////////////////////////////////
-    /// Callbacks
-    ///////////////////////////////////////////////////////
+    /////////////////////////////////////
+    // Callbacks
+    /////////////////////////////////////
 
     OnSelectionCallbackFn OnSelectionCallback;
 

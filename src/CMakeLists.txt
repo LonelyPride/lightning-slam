@@ -1,3 +1,20 @@
+# 个人修改（2026-10-09，aarch64 交叉编译支持）：Pangolin UI 源码按开关裁剪
+#   LIGHTNING_WITH_UI=ON  → 编 src/ui/*（本机构建默认）
+#   LIGHTNING_WITH_UI=OFF → 不编任何 src/ui/*（交叉编译默认；空实现见
+#                           src/ui/pangolin_window.h，调用点无需改动）
+set(LIGHTNING_UI_SOURCES "")
+if (LIGHTNING_WITH_UI)
+    set(LIGHTNING_UI_SOURCES
+            ui/pangolin_window.cc
+            ui/pangolin_window_impl.cc
+            ui/ui_car.cc
+            ui/ui_cloud.cc
+            ui/ui_trajectory.cc
+    )
+else ()
+    message(STATUS "${PROJECT_NAME}: LIGHTNING_WITH_UI=OFF -> src/ui 不参与编译（使用空实现）")
+endif ()
+
 add_library(${PROJECT_NAME}.libs SHARED
         common/nav_state.cc
         common/constant.h
@@ -32,11 +49,7 @@ add_library(${PROJECT_NAME}.libs SHARED
         utils/timer.cc
         utils/pointcloud_utils.cc
 
-        ui/pangolin_window.cc
-        ui/pangolin_window_impl.cc
-        ui/ui_car.cc
-        ui/ui_cloud.cc
-        ui/ui_trajectory.cc
+        ${LIGHTNING_UI_SOURCES}
 
         core/system/slam.cc
         core/system/loc_system.cc

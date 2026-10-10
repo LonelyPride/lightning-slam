@@ -40,16 +40,16 @@
 namespace lightning {
 namespace vehicle_frame {
 
-/// 个人修改（方案A+）：安装旋转 M = R_vehicle_imu 的运行期存放处（缺省单位阵 = 不做换算）
+// 个人修改（方案A+）：安装旋转 M = R_vehicle_imu 的运行期存放处（缺省单位阵 = 不做换算）
 inline Mat3d &VehicleImuRotationRef() {
     static Mat3d M = Mat3d::Identity();
     return M;
 }
 
-/// 个人修改：IMU 系 → 车辆(base_link)系 的旋转 M = R_vehicle_imu（由 yaml 配置或重力自动对齐得到）
+// 个人修改：IMU 系 → 车辆(base_link)系 的旋转 M = R_vehicle_imu（由 yaml 配置或重力自动对齐得到）
 inline const Mat3d &R_vehicle_imu() { return VehicleImuRotationRef(); }
 
-/// 个人修改（方案A+）：设置安装旋转并做合法性校验（必须正交、det = +1），非法返回 false
+// 个人修改（方案A+）：设置安装旋转并做合法性校验（必须正交、det = +1），非法返回 false
 inline bool SetVehicleImuRotation(const Mat3d &R) {
     if (R.allFinite() == false) {
         return false;
@@ -64,10 +64,10 @@ inline bool SetVehicleImuRotation(const Mat3d &R) {
     return true;
 }
 
-/// 个人修改（方案A+）：车辆(base_link)系 → IMU 系 的旋转 Mᵀ = R_imu_vehicle
+// 个人修改（方案A+）：车辆(base_link)系 → IMU 系 的旋转 Mᵀ = R_imu_vehicle
 inline Mat3d R_imu_vehicle() { return R_vehicle_imu().transpose(); }
 
-/// 个人修改（方案A+）：轴名字 → IMU 系单位向量（"x"/"y"/"z"，可带负号，忽略大小写与空白）
+// 个人修改（方案A+）：轴名字 → IMU 系单位向量（"x"/"y"/"z"，可带负号，忽略大小写与空白）
 inline bool ImuAxisFromName(const std::string &name, Vec3d *out) {
     std::string s;
     for (char c : name) {
@@ -153,7 +153,7 @@ inline bool VehicleImuRotationFromGravity(const Vec3d &up_in_imu, const std::str
     return true;
 }
 
-/// 个人修改（方案A+）：名称 → 安装旋转（identity/none/off = 不换算；x_down = Airy 标称竖装；x_up = 竖装倒置）
+// 个人修改（方案A+）：名称 → 安装旋转（identity/none/off = 不换算；x_down = Airy 标称竖装；x_up = 竖装倒置）
 inline bool VehicleImuRotationFromName(const std::string &name, Mat3d *out) {
     std::string s;
     for (char c : name) {
@@ -185,10 +185,10 @@ inline bool VehicleImuRotationFromName(const std::string &name, Mat3d *out) {
     return false;
 }
 
-/// 个人修改：T_w_body(IMU 系) → T_w_vehicle(base_link 系)。位置向量与坐标系无关，故只换旋转
+// 个人修改：T_w_body(IMU 系) → T_w_vehicle(base_link 系)。位置向量与坐标系无关，故只换旋转
 inline SE3 ToVehiclePose(const SE3& T_w_body) { return T_w_body * SE3(R_imu_vehicle(), Vec3d::Zero()); }
 
-/// 个人修改：T_w_vehicle(base_link 系) → T_w_body(IMU 系)（需要还原时使用）
+// 个人修改：T_w_vehicle(base_link 系) → T_w_body(IMU 系)（需要还原时使用）
 inline SE3 ToBodyPose(const SE3& T_w_vehicle) { return T_w_vehicle * SE3(R_vehicle_imu(), Vec3d::Zero()); }
 
 /**
@@ -206,7 +206,7 @@ inline SE3 T_imu_lidar(const Mat3d& R_imu_lidar, const Vec3d& t_imu_lidar) { ret
  */
 inline SE3 ToLidarPose(const SE3& T_w_body, const SE3& T_imu_lidar) { return T_w_body * T_imu_lidar; }
 
-/// 个人修改：T_w_lidar(雷达系) → T_w_body(IMU 系)
+// 个人修改：T_w_lidar(雷达系) → T_w_body(IMU 系)
 inline SE3 ToBodyPoseFromLidar(const SE3& T_w_lidar, const SE3& T_imu_lidar) {
     return T_w_lidar * T_imu_lidar.inverse();
 }

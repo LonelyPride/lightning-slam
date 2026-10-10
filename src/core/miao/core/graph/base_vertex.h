@@ -31,10 +31,10 @@ class BaseVertex : public Vertex {
     using EstimateType = T;
     using BackupStackType = std::stack<EstimateType, std::vector<EstimateType>>;
 
-    /// NOTE base vertex 既可以通过Dimension变量获取维度（编译期），也可以通过Dimension()函数获取（运行期）
-    static const int Dimension = D;  ///< dimension of the estimate (minimal) in the manifold space
+    // NOTE base vertex 既可以通过Dimension变量获取维度（编译期），也可以通过Dimension()函数获取（运行期）
+    static const int Dimension = D;  //< dimension of the estimate (minimal) in the manifold space
 
-    /// hessian 矩阵类型，本质上是一个映射，实际数据在block solver里, 为稀疏矩阵块
+    // hessian 矩阵类型，本质上是一个映射，实际数据在block solver里, 为稀疏矩阵块
     using HessianBlockType = Eigen::Matrix<double, D, D>;
 
    public:
@@ -70,20 +70,20 @@ class BaseVertex : public Vertex {
 
     void ClearHessian() override { hessian_.setZero(); }
 
-    /// 拷贝hessian至solver
+    // 拷贝hessian至solver
     void CopyHessianToSolver() override {
         if (hessian_in_solver_) {
             memcpy(hessian_in_solver_, hessian_.data(), Dimension * Dimension * sizeof(double));
         }
     }
 
-    /// 将b中的元素拷贝到成员变量
+    // 将b中的元素拷贝到成员变量
     int CopyB(double *b) const override {
         memcpy(b, b_.data(), Dimension * sizeof(double));
         return Dimension;
     }
 
-    /// 获取整个的B vector
+    // 获取整个的B vector
     Eigen::Matrix<double, D, 1> &GetB() { return b_; }
 
     const Eigen::Matrix<double, D, 1> &GetB() const { return b_; }
@@ -93,20 +93,20 @@ class BaseVertex : public Vertex {
 
     const HessianBlockType &A() const { return hessian_; }
 
-    /// 更新内部的H, b值
+    // 更新内部的H, b值
     virtual void UpdateHessianAndBias(const HessianBlockType &H, const Eigen::Matrix<double, D, 1> &b);
 
-    /// 估计值放入缓存
+    // 估计值放入缓存
     void Push() override { backup_.push(estimate_); }
 
-    /// 从缓存中提取估计值
+    // 从缓存中提取估计值
     void Pop() override {
         assert(!backup_.empty());
         estimate_ = backup_.top();
         backup_.pop();
     }
 
-    /// 放弃缓存中的估计值
+    // 放弃缓存中的估计值
     void DiscardTop() override {
         assert(!backup_.empty());
         backup_.pop();
@@ -118,14 +118,14 @@ class BaseVertex : public Vertex {
     //! set the estimate for the vertex also calls updateCache()
     void SetEstimate(const EstimateType &et) { estimate_ = et; }
 
-    /// 清空b
+    // 清空b
     inline void ClearQuadraticForm() override {
         hessian_.setZero();
         b_.setZero();
     }
 
    protected:
-    /// NOTE: 现在hessian和b都存储于本地，通过Copy操作再进入solver,而不是直接map to solver
+    // NOTE: 现在hessian和b都存储于本地，通过Copy操作再进入solver,而不是直接map to solver
     std::mutex hessian_mutex_;
     HessianBlockType hessian_;
     Eigen::Matrix<double, D, 1> b_ = Eigen::Matrix<double, D, 1>::Zero();

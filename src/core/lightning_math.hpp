@@ -67,7 +67,7 @@ Eigen::Matrix<T, 3, 3> Exp(const Eigen::Matrix<T, 3, 1>& ang_vel, const Ts& dt) 
 
         T r_ang = ang_vel_norm * dt;
 
-        /// Roderigous Tranformation
+        // Roderigous Tranformation
         return Eye3 + std::sin(r_ang) * K + (1.0 - std::cos(r_ang)) * K * K;
     } else {
         return Eye3;
@@ -82,7 +82,7 @@ Eigen::Matrix<T, 3, 3> Exp(const T& v1, const T& v2, const T& v3) {
         Eigen::Matrix<T, 3, 3> K;
         K = SKEW_SYM_MATRIX(v1 / norm, v2 / norm, v3 / norm);
 
-        /// Roderigous Tranformation
+        // Roderigous Tranformation
         return Eye3 + std::sin(norm) * K + (1.0 - std::cos(norm)) * K * K;
     } else {
         return Eye3;
@@ -123,7 +123,7 @@ Eigen::Matrix<T, 3, 1> RotMtoEuler(const Eigen::Matrix<T, 3, 3>& rot) {
 //     return res.toRotationMatrix().cast<T>();
 // }
 
-/// xt: 经验证，此转换与ros中tf::createQuaternionFromRPY结果一致
+// xt: 经验证，此转换与ros中tf::createQuaternionFromRPY结果一致
 template <typename T>
 Eigen::Matrix<T, 3, 3> RpyToRotM2(const T r, const T p, const T y) {
     using AA = Eigen::AngleAxis<T>;
@@ -155,21 +155,21 @@ inline Eigen::Matrix<S, 3, 3> MatFromArray(const boost::array<S, 9>& v) {
     return m;
 }
 
-/// 个人修改（2026-10-02，方案C 第 4 次修复③ 的配套）——
-///   把"只是近似正交"的旋转矩阵投影到最近的合法旋转矩阵（四元数归一化）。
-///
-/// 【为什么必须有它】yaml 里手写的 9 个数（如 fasterlio.extrinsic_R）只要不是 0/±1，
-///   四舍五入到有限小数位后一定带 ~1e-9 的非正交误差：
-///   本平台实测新 extrinsic_R 的 |R·Rᵀ − I| = 7.0e-9（det = 0.999999993）。
-///   而 Sophus 的 SO3(Matrix) 构造函数带前置检查 isOrthogonal()
-///   （阈值 = Constants<Scalar>::epsilon()，Frobenius 范数，thirdparty/Sophus/rotation_matrix.hpp:31），
-///   超限即 SOPHUS_ENSURE → **直接 abort**，表现为程序刚启动就死在
-///   `R is not orthogonal:` + 该残差矩阵（实测 2026-10-02 的 val_4th 运行）。
-///   因此**不能**依赖"配置里写成整数就没事"——读进来的外参必须先正交化。
-///
-/// 【做法】用四元数归一化（与 common/params.cc:76/81 处理旧 extrinsic 的方式一致），
-///   等价于 Frobenius 意义下的最近旋转矩阵，输出残差 ~1e-16，可安全喂给 SO3/SE3。
-/// 【不改既有行为】输入若已在 1e-12 内正交（如旧配置的 0/±1 矩阵），原样返回。
+// 个人修改（2026-10-02，方案C 第 4 次修复③ 的配套）——
+//   把"只是近似正交"的旋转矩阵投影到最近的合法旋转矩阵（四元数归一化）。
+//
+// 【为什么必须有它】yaml 里手写的 9 个数（如 fasterlio.extrinsic_R）只要不是 0/±1，
+//   四舍五入到有限小数位后一定带 ~1e-9 的非正交误差：
+//   本平台实测新 extrinsic_R 的 |R·Rᵀ − I| = 7.0e-9（det = 0.999999993）。
+//   而 Sophus 的 SO3(Matrix) 构造函数带前置检查 isOrthogonal()
+//   （阈值 = Constants<Scalar>::epsilon()，Frobenius 范数，thirdparty/Sophus/rotation_matrix.hpp:31），
+//   超限即 SOPHUS_ENSURE → **直接 abort**，表现为程序刚启动就死在
+//   `R is not orthogonal:` + 该残差矩阵（实测 2026-10-02 的 val_4th 运行）。
+//   因此**不能**依赖"配置里写成整数就没事"——读进来的外参必须先正交化。
+//
+// 【做法】用四元数归一化（与 common/params.cc:76/81 处理旧 extrinsic 的方式一致），
+//   等价于 Frobenius 意义下的最近旋转矩阵，输出残差 ~1e-16，可安全喂给 SO3/SE3。
+// 【不改既有行为】输入若已在 1e-12 内正交（如旧配置的 0/±1 矩阵），原样返回。
 template <typename S>
 inline Eigen::Matrix<S, 3, 3> OrthonormalizeRotation(const Eigen::Matrix<S, 3, 3>& R) {
     if ((R * R.transpose() - Eigen::Matrix<S, 3, 3>::Identity()).norm() < S(1e-12)) {
@@ -335,7 +335,7 @@ inline Eigen::Matrix<double, 3, 3> A_matrix(const Vec3d& v) {
     return res;
 }
 
-/// SO3 Jlinv()
+// SO3 Jlinv()
 inline Eigen::Matrix<double, 3, 3> A_inv(const Vec3d& v) {
     Eigen::Matrix<double, 3, 3> res;
     if (v.norm() > 1e-5) {
@@ -352,20 +352,20 @@ inline Eigen::Matrix<double, 3, 3> A_inv(const Vec3d& v) {
     return res;
 }
 
-/// hash of vector
+// hash of vector
 template <int N>
 struct hash_vec {
     inline size_t operator()(const Eigen::Matrix<int, N, 1>& v) const;
 };
 
-/// vec 2 hash
-/// @see Optimized Spatial Hashing for Collision Detection of Deformable Objects, Matthias Teschner et. al., VMV 2003
+// vec 2 hash
+// @see Optimized Spatial Hashing for Collision Detection of Deformable Objects, Matthias Teschner et. al., VMV 2003
 template <>
 inline size_t hash_vec<2>::operator()(const Eigen::Matrix<int, 2, 1>& v) const {
     return size_t(((v[0]) * 73856093) ^ ((v[1]) * 471943)) % 10000000;
 }
 
-/// vec 3 hash
+// vec 3 hash
 template <>
 inline size_t hash_vec<3>::operator()(const Eigen::Matrix<int, 3, 1>& v) const {
     return size_t(((v[0]) * 73856093) ^ ((v[1]) * 471943) ^ ((v[2]) * 83492791)) % 10000000;
@@ -438,7 +438,7 @@ inline bool esti_plane(Eigen::Matrix<T, 4, 1>& pca_result, const PointVector& po
     return true;
 }
 
-/// 体素滤波
+// 体素滤波
 inline CloudPtr VoxelGrid(CloudPtr cloud, float voxel_size = 0.05) {
     pcl::VoxelGrid<PointType> voxel;
     voxel.setLeafSize(voxel_size, voxel_size, voxel_size);
@@ -450,7 +450,7 @@ inline CloudPtr VoxelGrid(CloudPtr cloud, float voxel_size = 0.05) {
     return output;
 }
 
-/// pcl 时间戳
+// pcl 时间戳
 inline double ToSec(uint64_t t) { return double(t) * 1e-9; }
 
 // convert from pcl point to eigen
@@ -505,7 +505,7 @@ inline Eigen::Matrix<S, 4, 4> Mat4FromArray(const std::vector<double>& v) {
     return m;
 }
 
-/// 矢量比较
+// 矢量比较
 template <int N>
 struct less_vec {
     inline bool operator()(const Eigen::Matrix<int, N, 1>& v1, const Eigen::Matrix<int, N, 1>& v2) const;
@@ -573,7 +573,7 @@ void UpdateMeanAndCov(int hist_m, int curr_n, const Eigen::Matrix<S, D, 1>& hist
               (hist_m + curr_n);
 }
 
-/// 将角度保持在正负PI以内
+// 将角度保持在正负PI以内
 inline void KeepAngleInPI(double& angle) {
     while (angle < -M_PI) {
         angle = angle + 2 * M_PI;
@@ -599,12 +599,12 @@ inline builtin_interfaces::msg::Time FromSec(double t) {
     return ret;
 }
 
-/// 从pose中取出yaw pitch roll
-/// 使用的顺序是：roll pitch yaw ，最左是roll
-/// 由于欧拉角的多解性，Eigen在分解时选择最小化第一个（也就是roll）。否则，如果选择最小化yaw，那么roll和pitch可能出现大范围旋转，不符合实际
-/// @see https://stackoverflow.com/questions/33895970/about-eulerangles-conversion-from-eigen-c-library
-/// 这个用在lego-loam的lidar odom里，符合它的定义
-/// 2020.11 change back to tf to keep consist
+// 从pose中取出yaw pitch roll
+// 使用的顺序是：roll pitch yaw ，最左是roll
+// 由于欧拉角的多解性，Eigen在分解时选择最小化第一个（也就是roll）。否则，如果选择最小化yaw，那么roll和pitch可能出现大范围旋转，不符合实际
+// @see https://stackoverflow.com/questions/33895970/about-eulerangles-conversion-from-eigen-c-library
+// 这个用在lego-loam的lidar odom里，符合它的定义
+// 2020.11 change back to tf to keep consist
 inline PoseRPYD SE3ToRollPitchYaw(const SE3& pose) {
     auto rot = pose.rotationMatrix();
     tf2::Matrix3x3 temp_tf_matrix(rot(0, 0), rot(0, 1), rot(0, 2), rot(1, 0), rot(1, 1), rot(1, 2), rot(2, 0),
@@ -618,8 +618,8 @@ inline PoseRPYD SE3ToRollPitchYaw(const SE3& pose) {
     return output;
 }
 
-/// 从xyz和yaw pitch roll转成SE3
-/// 使用0,1,2顺序（从右读）,yaw最先旋转
+// 从xyz和yaw pitch roll转成SE3
+// 使用0,1,2顺序（从右读）,yaw最先旋转
 inline SE3 XYZRPYToSE3(const PoseRPYD& pose) {
     using AA = Eigen::AngleAxisd;
     return SE3((AA(pose.yaw, Vec3d::UnitZ()) * AA(pose.pitch, Vec3d::UnitY()) * AA(pose.roll, Vec3d::UnitX())),
@@ -678,7 +678,7 @@ inline bool PoseInterp(double query_time, C&& data, FT&& take_time_func, FP&& ta
                 double time_first = take_time_func(*first);
                 double time_second = take_time_func(*second);
 
-                /// 防止末尾两个时间相等
+                // 防止末尾两个时间相等
                 if (time_second <= time_first) {
                     result = take_pose_func(*data.rbegin());
                     best_match = *data.rbegin();
@@ -688,7 +688,7 @@ inline bool PoseInterp(double query_time, C&& data, FT&& take_time_func, FP&& ta
                     return true;
                 }
 
-                /// 防止末尾两个时间太近
+                // 防止末尾两个时间太近
                 while ((time_second - time_first) < 0.05) {
                     first++;
                     if (first == data.rend()) {

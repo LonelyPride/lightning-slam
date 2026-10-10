@@ -23,7 +23,7 @@ class EdgeSE3Prior : public BaseUnaryEdge<6, SE3, VertexSE3> {
    public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    /// 为了读g2o文件，这里的算法必须与g2o一致。
+    // 为了读g2o文件，这里的算法必须与g2o一致。
 
     void ComputeError() override {
         SE3 pose = ((VertexSE3*)(vertices_[0]))->Estimate();

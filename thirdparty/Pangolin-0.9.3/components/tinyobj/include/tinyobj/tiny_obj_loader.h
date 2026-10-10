@@ -343,58 +343,58 @@ class MaterialStreamReader : public MaterialReader {
   std::istream &m_inStream;
 };
 
-/// Loads .obj from a file.
-/// 'attrib', 'shapes' and 'materials' will be filled with parsed shape data
-/// 'shapes' will be filled with parsed shape data
-/// Returns true when loading .obj become success.
-/// Returns warning message into `warn`, and error message into `err`
-/// 'mtl_basedir' is optional, and used for base directory for .mtl file.
-/// In default(`NULL'), .mtl file is searched from an application's working
-/// directory.
-/// 'triangulate' is optional, and used whether triangulate polygon face in .obj
-/// or not.
-/// Option 'default_vcols_fallback' specifies whether vertex colors should
-/// always be defined, even if no colors are given (fallback to white).
+// Loads .obj from a file.
+// 'attrib', 'shapes' and 'materials' will be filled with parsed shape data
+// 'shapes' will be filled with parsed shape data
+// Returns true when loading .obj become success.
+// Returns warning message into `warn`, and error message into `err`
+// 'mtl_basedir' is optional, and used for base directory for .mtl file.
+// In default(`NULL'), .mtl file is searched from an application's working
+// directory.
+// 'triangulate' is optional, and used whether triangulate polygon face in .obj
+// or not.
+// Option 'default_vcols_fallback' specifies whether vertex colors should
+// always be defined, even if no colors are given (fallback to white).
 bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
              std::vector<material_t> *materials, std::string *warn,
              std::string *err, const char *filename,
              const char *mtl_basedir = NULL, bool triangulate = true,
              bool default_vcols_fallback = true);
 
-/// Loads .obj from a file with custom user callback.
-/// .mtl is loaded as usual and parsed material_t data will be passed to
-/// `callback.mtllib_cb`.
-/// Returns true when loading .obj/.mtl become success.
-/// Returns warning message into `warn`, and error message into `err`
-/// See `examples/callback_api/` for how to use this function.
+// Loads .obj from a file with custom user callback.
+// .mtl is loaded as usual and parsed material_t data will be passed to
+// `callback.mtllib_cb`.
+// Returns true when loading .obj/.mtl become success.
+// Returns warning message into `warn`, and error message into `err`
+// See `examples/callback_api/` for how to use this function.
 bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
                          void *user_data = NULL,
                          MaterialReader *readMatFn = NULL,
                          std::string *warn = NULL, std::string *err = NULL);
 
-/// Loads object from a std::istream, uses GetMtlIStreamFn to retrieve
-/// std::istream for materials.
-/// Returns true when loading .obj become success.
-/// Returns warning and error message into `err`
+// Loads object from a std::istream, uses GetMtlIStreamFn to retrieve
+// std::istream for materials.
+// Returns true when loading .obj become success.
+// Returns warning and error message into `err`
 bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
              std::vector<material_t> *materials, std::string *warn,
              std::string *err, std::istream *inStream,
              MaterialReader *readMatFn = NULL, bool triangulate = true,
              bool default_vcols_fallback = true);
 
-/// Loads materials into std::map
+// Loads materials into std::map
 void LoadMtl(std::map<std::string, int> *material_map,
              std::vector<material_t> *materials, std::istream *inStream,
              std::string *warning, std::string *err);
 
-///
-/// Parse texture name and texture option for custom texture parameter through material::unknown_parameter
-///
-/// @param[out] texname Parsed texture name
-/// @param[out] texopt Parsed texopt
-/// @param[in] linebuf Input string
-/// @param[in] is_bump Is this texture bump/normal?
-///
+//
+// Parse texture name and texture option for custom texture parameter through material::unknown_parameter
+//
+// @param[out] texname Parsed texture name
+// @param[out] texopt Parsed texopt
+// @param[in] linebuf Input string
+// @param[in] is_bump Is this texture bump/normal?
+//
 bool ParseTextureNameAndOption(std::string *texname,
                                texture_option_t *texopt,
                                const char *linebuf,
